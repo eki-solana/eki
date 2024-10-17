@@ -15,7 +15,7 @@ declare_id!("51uA4MrH53ToDjm3eF8jcxHfyHZctrU1HtebwyqVkM1U");
 pub mod eki {
     use super::*;
 
-    pub fn initialize(ctx: Context<Initialize>) -> Result<()> {
-        initialize::handler(ctx)
+    pub fn initialize_market(ctx: Context<InitializeMarket>, start_time: i64) -> Result<()> {
+        ctx.accounts.initialize_market(&ctx.bumps, start_time)
     }
 }
