@@ -73,13 +73,13 @@ describe("eki", () => {
             {
               mint: usdcMint,
               owner: userKeypairs[i].publicKey,
-              amount: BigInt(1_000_000_000_000),
+              amount: 1_000_000_000_000n,
               delegateOption: 0,
               delegate: PublicKey.default,
-              delegatedAmount: BigInt(0),
+              delegatedAmount: 0n,
               state: 1,
               isNativeOption: 0,
-              isNative: BigInt(0),
+              isNative: 0n,
               closeAuthorityOption: 0,
               closeAuthority: PublicKey.default,
             },
@@ -106,7 +106,7 @@ describe("eki", () => {
     banksClient = context.banksClient;
   });
 
-  it("Initializes market!", async () => {
+  it("initializes market!", async () => {
     const [market, marketBump] = PublicKey.findProgramAddressSync(
       [
         Buffer.from("market"),
@@ -122,7 +122,7 @@ describe("eki", () => {
     const txSig = await program.methods
       .initializeMarket(new BN(startTime))
       .accounts({ ...accounts })
-      .rpc();
+      .rpc({ skipPreflight: true });
     console.log("Your transaction signature", txSig);
 
     const marketAccount = await program.account.market.fetch(market);
