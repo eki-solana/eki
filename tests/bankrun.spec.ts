@@ -7,7 +7,7 @@ import {
   getAssociatedTokenAddressSync,
   NATIVE_MINT,
   TOKEN_2022_PROGRAM_ID,
-  type TOKEN_PROGRAM_ID,
+  TOKEN_PROGRAM_ID,
 } from "@solana/spl-token";
 import {
   Connection,
@@ -39,7 +39,7 @@ describe("eki", () => {
   );
 
   const accounts: Record<string, PublicKey> = {
-    tokenProgram: TOKEN_PROGRAM,
+    tokenProgram: TOKEN_PROGRAM_ID,
     tokenMintA: usdcMint,
     tokenMintB: NATIVE_MINT,
   };
@@ -102,6 +102,12 @@ describe("eki", () => {
     provider = new BankrunProvider(context);
     anchor.setProvider(provider);
 
+    const usdcMintInfo = await provider.connection.getAccountInfo(usdcMint);
+    console.log("Usdc Mint Info", usdcMintInfo);
+
+    const nativeInfo = await provider.connection.getAccountInfo(NATIVE_MINT);
+    console.log("Native Info", nativeInfo);
+
     program = new Program<Eki>(IDL as Eki, provider);
     banksClient = context.banksClient;
   });
@@ -112,7 +118,19 @@ describe("eki", () => {
       program.programId
     );
 
+    const [treasuryA] = PublicKey.findProgramAddressSync(
+      [Buffer.from("treasury_a"), market.toBuffer()],
+      program.programId
+    );
+
+    const [treasuryB] = PublicKey.findProgramAddressSync(
+      [Buffer.from("treasury_b"), market.toBuffer()],
+      program.programId
+    );
+
     accounts.market = market;
+    accounts.treasuryA = treasuryA;
+    accounts.treasuryB = treasuryB;
 
     const startTime = Date.now() / 1000 + 86400;
     const txSig = await program.methods
