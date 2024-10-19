@@ -56,12 +56,19 @@ impl<'info> DepositTokenA<'info> {
         &mut self,
         bumps: &DepositTokenABumps,
         amount: u64,
-        duration: u64,
+        mut end_slot: u64,
     ) -> Result<()> {
         msg!("Creating position...");
 
         let start_slot = Clock::get().unwrap().slot;
-        let end_slot = get_end_slot(start_slot, duration).unwrap();
+
+        // Restrict end slot to be only every 10th slot
+        end_slot = (end_slot + 5) / 10;
+        end_slot *= 10;
+
+        if end_slot <= start_slot {
+            return Err(CustomErrorCode::ShortTradeDuration.into());
+        }
 
         self.position_a.set_inner(PositionA::new(
             amount,
@@ -128,18 +135,4 @@ pub struct DepositTokenB<'info> {
 
     pub token_program: Interface<'info, TokenInterface>,
     pub system_program: Program<'info, System>,
-}
-
-fn get_end_slot(start_slot: u64, duration: u64) -> Result<u64> {
-    if duration <= MINIMUM_TRADE_DURATION_SECONDS {
-        return Err(CustomErrorCode::ShortTradeDuration.into());
-    }
-
-    let estimated_slot_diff = duration * 1000 / 400;
-
-    // Restrict end slot to be only every 10th slot
-    let mut end_slot = (start_slot + estimated_slot_diff + 5) / 10;
-    end_slot *= 10;
-
-    return Ok(end_slot);
 }

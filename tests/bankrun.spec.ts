@@ -219,7 +219,9 @@ describe("eki", () => {
 
   it("deposits token when creating a position!", async () => {
     const depositAmount = 10 * LAMPORTS_PER_SOL;
-    const oneHour = 60 * 60;
+    const startSlot = Number(await banksClient.getSlot());
+    const endSlot = startSlot + 9000;
+
     const user = userKeypairs[0];
 
     const [position, positionBump] = PublicKey.findProgramAddressSync(
@@ -273,7 +275,7 @@ describe("eki", () => {
     accounts.depositorTokenAccount = solAtas[0];
 
     const txSig = await program.methods
-      .depositTokenA(new BN(depositAmount), new BN(oneHour))
+      .depositTokenA(new BN(depositAmount), new BN(endSlot))
       .accounts({
         ...accounts,
         depositor: userKeypairs[0].publicKey,
@@ -288,13 +290,16 @@ describe("eki", () => {
     const positionAccount = await program.account.positionA.fetch(
       accounts.positionA
     );
-    const startSlot = positionAccount.startSlot.toNumber();
-    const endSlot = positionAccount.endSlot.toNumber();
+    const startPositionSlot = positionAccount.startSlot.toNumber();
+    const endPositionSlot = positionAccount.endSlot.toNumber();
     expect(positionAccount.amount.toNumber()).toStrictEqual(depositAmount);
-    expect(endSlot - startSlot).toBeGreaterThan(MINIMUM_TRADE_DURATION_SECONDS);
-    expect(endSlot % 10).toStrictEqual(0);
+    expect(endPositionSlot - startPositionSlot).toBeGreaterThan(
+      MINIMUM_TRADE_DURATION_SECONDS
+    );
+    expect(startPositionSlot).toStrictEqual(startSlot);
+    expect(endPositionSlot % 10).toStrictEqual(0);
     expect(positionAccount.volume.toNumber()).toStrictEqual(
-      Math.floor(depositAmount / (endSlot - startSlot + 1))
+      Math.floor(depositAmount / (endPositionSlot - startPositionSlot + 1))
     );
     expect(positionAccount.bump).toStrictEqual(positionBump);
 
