@@ -79,8 +79,6 @@ impl<'info> InitializeMarket<'info> {
         self.bookkeeping
             .set_inner(Bookkeeping::new(start_slot, bumps.bookkeeping));
 
-        // self.exits.set_inner(Exits::new(bumps.exits));
-
         msg!("Market created starting at slot {}", start_slot);
         Ok(())
     }

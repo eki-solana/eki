@@ -8,3 +8,4 @@ pub const TREASURY_B_SEED: &str = "treasury_b";
 
 pub const ANCHOR_DISCRIMINATOR: usize = 8;
 pub const MINIMUM_TRADE_DURATION_SECONDS: u64 = 10;
+pub const EXITS_LENGTH: usize = 640000; // 2^19

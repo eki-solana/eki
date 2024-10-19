@@ -4,13 +4,10 @@ import type { Eki } from "../target/types/eki";
 import {
   ACCOUNT_SIZE,
   AccountLayout,
-  createAssociatedTokenAccount,
   createCloseAccountInstruction,
   createInitializeAccount3Instruction,
-  createSyncNativeInstruction,
   createTransferInstruction,
   getAssociatedTokenAddressSync,
-  getMinimumBalanceForRentExemptAccount,
   NATIVE_MINT,
   TOKEN_2022_PROGRAM_ID,
   TOKEN_PROGRAM_ID,
@@ -34,7 +31,7 @@ const TOKEN_PROGRAM: typeof TOKEN_2022_PROGRAM_ID | typeof TOKEN_PROGRAM_ID =
 
 const MINIMUM_TRADE_DURATION_SECONDS = 10;
 
-const EXITS_ACCOUNT_SIZE = 4194320;
+const EXITS_ACCOUNT_SIZE = 10240016;
 
 describe("eki", () => {
   let program = anchor.workspace.Eki as Program<Eki>;

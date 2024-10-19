@@ -32,7 +32,7 @@ impl<'info> InitializeExits<'info> {
         let mut data = self.exits.data.borrow_mut();
         data[..8].copy_from_slice(&discriminator[..8]);
 
-        msg!("Exits account initialized.");
+        msg!("Exits account initialized!");
         Ok(())
     }
 }
