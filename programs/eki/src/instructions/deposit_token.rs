@@ -75,6 +75,11 @@ impl<'info> DepositTokenA<'info> {
     }
 
     pub fn transfer_tokens_to_treasury(&self, amount: u64) -> Result<()> {
+        msg!(
+            "Transferring {} tokens of mint {} to treasury",
+            amount / u64::pow(10, self.token_mint_a.decimals as u32),
+            &self.token_mint_a.key()
+        );
         transfer_tokens(
             &self.depositor_token_account,
             &self.treasury_a,
@@ -83,6 +88,11 @@ impl<'info> DepositTokenA<'info> {
             &self.depositor,
             &self.token_program,
         )
+    }
+
+    pub fn update_market(&mut self) -> Result<()> {
+        self.market.token_a_volume += self.position_a.volume;
+        Ok(())
     }
 }
 

@@ -205,11 +205,14 @@ describe("eki", () => {
     const positionAccount = await program.account.positionA.fetch(
       accounts.positionA
     );
+    const startSlot = positionAccount.startSlot.toNumber();
+    const endSlot = positionAccount.endSlot.toNumber();
     expect(positionAccount.amount.toNumber()).toStrictEqual(depositAmount);
-    expect(
-      positionAccount.endSlot.toNumber() - positionAccount.startSlot.toNumber()
-    ).toBeGreaterThan(MINIMUM_TRADE_DURATION_SECONDS);
-    expect(positionAccount.endSlot.toNumber() % 10).toStrictEqual(0);
+    expect(endSlot - startSlot).toBeGreaterThan(MINIMUM_TRADE_DURATION_SECONDS);
+    expect(endSlot % 10).toStrictEqual(0);
+    expect(positionAccount.volume.toNumber()).toStrictEqual(
+      Math.floor(depositAmount / (endSlot - startSlot + 1))
+    );
     expect(positionAccount.bump).toStrictEqual(positionBump);
 
     // Treasury Account
