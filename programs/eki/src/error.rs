@@ -4,4 +4,7 @@ use anchor_lang::prelude::*;
 pub enum CustomErrorCode {
     #[msg("End slot has already passed")]
     EndSlotAlreadyPassed,
+
+    #[msg("Account is too small")]
+    AccountTooSmall,
 }

@@ -53,17 +53,9 @@ pub struct InitializeMarket<'info> {
     )]
     pub bookkeeping: Box<Account<'info, Bookkeeping>>,
 
-    #[account(
-        mut
-        // init,
-        // payer = signer,
-        // space = ANCHOR_DISCRIMINATOR + Exits::INIT_SPACE,
-        // seeds = [Exits::SEED_PREFIX.as_bytes(), market.key().as_ref()],
-        // bump
-    )]
-    // pub exits: AccountLoader<'info, Exits>,
-    /// CHECK:
-    pub exits: UncheckedAccount<'info>,
+    #[account(mut)]
+    pub exits: AccountLoader<'info, Exits>,
+
     pub token_program: Interface<'info, TokenInterface>,
     pub system_program: Program<'info, System>,
 }
