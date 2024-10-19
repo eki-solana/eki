@@ -27,11 +27,14 @@ import { BankrunProvider, startAnchor } from "anchor-bankrun";
 import IDL from "../target/idl/eki.json";
 import { BanksClient, ProgramTestContext } from "solana-bankrun";
 import { SYSTEM_PROGRAM_ID } from "@coral-xyz/anchor/dist/cjs/native/system";
+import crypto from "crypto";
 
 const TOKEN_PROGRAM: typeof TOKEN_2022_PROGRAM_ID | typeof TOKEN_PROGRAM_ID =
   TOKEN_2022_PROGRAM_ID;
 
 const MINIMUM_TRADE_DURATION_SECONDS = 10;
+
+const EXITS_ACCOUNT_SIZE = 4194317;
 
 describe("eki", () => {
   let program = anchor.workspace.Eki as Program<Eki>;
@@ -178,10 +181,51 @@ describe("eki", () => {
       program.programId
     );
 
+    // const [exits, exitsBump] = PublicKey.findProgramAddressSync(
+    //   [Buffer.from("exits"), market.toBuffer()],
+    //   program.programId
+    // );
+
+    const exits = makeKeypairs(1)[0];
+
+    const ix = SystemProgram.createAccount({
+      fromPubkey: userKeypairs[0].publicKey,
+      newAccountPubkey: exits.publicKey,
+      space: EXITS_ACCOUNT_SIZE,
+      // lamports: await getMinimumBalanceForRentExemptAccount(
+      //   provider.connection
+      // ),
+      lamports: 100 * LAMPORTS_PER_SOL,
+      programId: program.programId,
+    });
+
+    const blockhash = context.lastBlockhash;
+    const tx = new Transaction();
+    tx.recentBlockhash = blockhash;
+    tx.add(ix);
+    tx.sign(userKeypairs[0], exits);
+    await banksClient.processTransaction(tx);
+
+    const hex = crypto
+      .createHash("sha256")
+      .update("account:Exits")
+      .digest("hex");
+    const buffer = Buffer.from(hex, "hex");
+    const hash = new Uint8Array(buffer);
+    let exitsAccount = await banksClient.getAccount(exits.publicKey);
+    console.log("Hash", hash.slice(0, 8));
+    console.log("Exit account", exitsAccount.data);
+    exitsAccount.data.set(hash.slice(0, 8), 0);
+    console.log("Exit account", exitsAccount.data);
+
+    exitsAccount = await banksClient.getAccount(exits.publicKey);
+    console.log("Exit account", exitsAccount.data);
+
     accounts.market = market;
     accounts.treasuryA = treasuryA;
     accounts.treasuryB = treasuryB;
     accounts.bookkeping = bookkeeping;
+    accounts.exits = exits.publicKey;
 
     const startTime = Date.now() / 1000 + 86400;
 
@@ -190,6 +234,9 @@ describe("eki", () => {
       .accounts({ ...accounts })
       .rpc({ skipPreflight: true });
     console.log("Your transaction signature", txSig);
+
+    let marketAccountBytes = await banksClient.getAccount(market);
+    console.log("Market account", marketAccountBytes);
 
     // Market Account
     const marketAccount = await program.account.market.fetch(market);
@@ -214,6 +261,10 @@ describe("eki", () => {
       marketAccount.startSlot.toNumber()
     );
     expect(bookkeepingAccount.bump).toStrictEqual(bookkeepingBump);
+
+    // Exits
+    // const exitsAccount = await program.account.exits.fetch(exits.publicKey);
+    // console.log("Exits", exitsAccount);
 
     // Treasury Account
     const treasuryAccountA = await banksClient.getAccount(accounts.treasuryA);
