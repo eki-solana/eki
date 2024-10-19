@@ -66,6 +66,8 @@ describe("eki", () => {
     tokenMintB: usdcMint,
   };
 
+  let endSlotInterval = 100;
+
   beforeAll(async () => {
     const devnet = new Connection("https://api.mainnet-beta.solana.com");
     const accountInfo = await devnet.getAccountInfo(usdcMint);
@@ -180,7 +182,7 @@ describe("eki", () => {
 
     const exits = makeKeypairs(1)[0];
 
-    const ix = SystemProgram.createAccount({
+    const createExitsAccountIx = SystemProgram.createAccount({
       fromPubkey: userKeypairs[0].publicKey,
       newAccountPubkey: exits.publicKey,
       space: EXITS_ACCOUNT_SIZE,
@@ -191,12 +193,12 @@ describe("eki", () => {
       programId: program.programId,
     });
 
-    const blockhash = context.lastBlockhash;
-    const tx = new Transaction();
-    tx.recentBlockhash = blockhash;
-    tx.add(ix);
-    tx.sign(userKeypairs[0], exits);
-    await banksClient.processTransaction(tx);
+    let blockhash = context.lastBlockhash;
+    const createExitsAccountTx = new Transaction();
+    createExitsAccountTx.recentBlockhash = blockhash;
+    createExitsAccountTx.add(createExitsAccountIx);
+    createExitsAccountTx.sign(userKeypairs[0], exits);
+    await banksClient.processTransaction(createExitsAccountTx);
 
     accounts.market = market;
     accounts.treasuryA = treasuryA;
@@ -206,17 +208,23 @@ describe("eki", () => {
 
     const startTime = Date.now() / 1000 + 86400;
 
-    const txS = await program.methods
-      .initializeExits()
-      .accounts({ ...accounts })
-      .rpc({ skipPreflight: true });
-    console.log("Your transaction signature", txS);
+    const ixs = [
+      await program.methods
+        .initializeExits()
+        .accounts({ ...accounts })
+        .instruction(),
+      await program.methods
+        .initializeMarket(new BN(startTime), new BN(endSlotInterval))
+        .accounts({ ...accounts })
+        .instruction(),
+    ];
 
-    const txSig = await program.methods
-      .initializeMarket(new BN(startTime))
-      .accounts({ ...accounts })
-      .rpc({ skipPreflight: true });
-    console.log("Your transaction signature", txSig);
+    blockhash = context.lastBlockhash;
+    const initializeTx = new Transaction();
+    initializeTx.recentBlockhash = blockhash;
+    initializeTx.add(...ixs);
+    initializeTx.sign(provider.wallet.payer);
+    await banksClient.processTransaction(initializeTx);
 
     // Market Account
     const marketAccount = await program.account.market.fetch(market);
@@ -228,6 +236,9 @@ describe("eki", () => {
     );
     expect(marketAccount.tokenAVolume.toString()).toStrictEqual("0");
     expect(marketAccount.tokenBVolume.toString()).toStrictEqual("0");
+    expect(marketAccount.endSlotInterval.toNumber()).toStrictEqual(
+      endSlotInterval
+    );
     expect(marketAccount.bump).toStrictEqual(marketBump);
 
     // Bookkeeping
@@ -343,7 +354,7 @@ describe("eki", () => {
     const endPositionSlot = positionAccount.endSlot.toNumber();
     expect(positionAccount.amount.toNumber()).toStrictEqual(depositAmount);
     expect(endPositionSlot - startPositionSlot).toBeGreaterThan(
-      MINIMUM_TRADE_DURATION_SECONDS
+      endSlotInterval
     );
     expect(startPositionSlot).toStrictEqual(startSlot);
     expect(endPositionSlot % 10).toStrictEqual(0);

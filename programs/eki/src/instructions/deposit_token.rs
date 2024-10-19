@@ -67,7 +67,7 @@ impl<'info> DepositTokenA<'info> {
         end_slot = (end_slot + end_slot_interval / 2) / end_slot_interval;
         end_slot *= end_slot_interval;
 
-        if end_slot <= start_slot {
+        if end_slot < start_slot + end_slot_interval {
             return Err(CustomErrorCode::EndSlotAlreadyPassed.into());
         }
 
