@@ -21,11 +21,11 @@ pub mod eki {
 
     pub fn initialize_market(
         ctx: Context<InitializeMarket>,
-        start_time: i64,
+        start_slot: u64,
         end_slot_interval: u64,
     ) -> Result<()> {
         ctx.accounts
-            .initialize_market(&ctx.bumps, start_time, end_slot_interval)
+            .initialize_market(&ctx.bumps, start_slot, end_slot_interval)
     }
 
     pub fn deposit_token_a(ctx: Context<DepositTokenA>, amount: u64, duration: u64) -> Result<()> {

@@ -67,6 +67,7 @@ describe("eki", () => {
   };
 
   let endSlotInterval = 100;
+  let startSlot = 2000;
 
   beforeAll(async () => {
     const devnet = new Connection("https://api.mainnet-beta.solana.com");
@@ -203,10 +204,8 @@ describe("eki", () => {
     accounts.market = market;
     accounts.treasuryA = treasuryA;
     accounts.treasuryB = treasuryB;
-    accounts.bookkeping = bookkeeping;
+    accounts.bookkeeping = bookkeeping;
     accounts.exits = exits.publicKey;
-
-    const startTime = Date.now() / 1000 + 86400;
 
     const ixs = [
       await program.methods
@@ -214,7 +213,7 @@ describe("eki", () => {
         .accounts({ ...accounts })
         .instruction(),
       await program.methods
-        .initializeMarket(new BN(startTime), new BN(endSlotInterval))
+        .initializeMarket(new BN(startSlot), new BN(endSlotInterval))
         .accounts({ ...accounts })
         .instruction(),
     ];
@@ -236,6 +235,7 @@ describe("eki", () => {
     );
     expect(marketAccount.tokenAVolume.toString()).toStrictEqual("0");
     expect(marketAccount.tokenBVolume.toString()).toStrictEqual("0");
+    expect(marketAccount.startSlot.toNumber()).toStrictEqual(startSlot);
     expect(marketAccount.endSlotInterval.toNumber()).toStrictEqual(
       endSlotInterval
     );
