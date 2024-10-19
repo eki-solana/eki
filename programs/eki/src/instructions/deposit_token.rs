@@ -67,7 +67,7 @@ impl<'info> DepositTokenA<'info> {
         end_slot *= 10;
 
         if end_slot <= start_slot {
-            return Err(CustomErrorCode::ShortTradeDuration.into());
+            return Err(CustomErrorCode::EndSlotAlreadyPassed.into());
         }
 
         self.position_a.set_inner(PositionA::new(
