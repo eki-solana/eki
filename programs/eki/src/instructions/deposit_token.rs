@@ -1,4 +1,5 @@
 use anchor_lang::prelude::*;
+use anchor_spl::associated_token::AssociatedToken;
 use anchor_spl::token_interface::{Mint, TokenAccount, TokenInterface};
 
 use crate::constants::*;
@@ -24,7 +25,7 @@ pub struct DepositTokenA<'info> {
 
     #[account(
       mut,
-      has_one = token_mint_a,
+      has_one = treasury_a,
       seeds = [Market::SEED_PREFIX.as_bytes()],
       bump = market.bump
     )]
@@ -46,6 +47,7 @@ pub struct DepositTokenA<'info> {
     pub treasury_a: InterfaceAccount<'info, TokenAccount>,
 
     pub token_program: Interface<'info, TokenInterface>,
+    pub associated_token_program: Program<'info, AssociatedToken>,
     pub system_program: Program<'info, System>,
 }
 
@@ -93,7 +95,7 @@ pub struct DepositTokenB<'info> {
 
     #[account(
       mut,
-      has_one = token_mint_b,
+      has_one = treasury_b,
       seeds = [Market::SEED_PREFIX.as_bytes()],
       bump = market.bump
     )]

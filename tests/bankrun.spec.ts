@@ -24,6 +24,8 @@ import { SYSTEM_PROGRAM_ID } from "@coral-xyz/anchor/dist/cjs/native/system";
 const TOKEN_PROGRAM: typeof TOKEN_2022_PROGRAM_ID | typeof TOKEN_PROGRAM_ID =
   TOKEN_2022_PROGRAM_ID;
 
+const MINIMUM_TRADE_DURATION_SECONDS = 10;
+
 describe("eki", () => {
   let program = anchor.workspace.Eki as Program<Eki>;
   let context: ProgramTestContext;
@@ -35,7 +37,12 @@ describe("eki", () => {
     "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
   );
   const atas = userKeypairs.map((user) =>
-    getAssociatedTokenAddressSync(usdcMint, user.publicKey)
+    getAssociatedTokenAddressSync(
+      usdcMint,
+      user.publicKey,
+      false,
+      TOKEN_PROGRAM_ID
+    )
   );
 
   const accounts: Record<string, PublicKey> = {
@@ -45,8 +52,8 @@ describe("eki", () => {
   };
 
   beforeAll(async () => {
-    const connection = new Connection("https://api.mainnet-beta.solana.com");
-    const accountInfo = await connection.getAccountInfo(usdcMint);
+    const devnet = new Connection("https://api.mainnet-beta.solana.com");
+    const accountInfo = await devnet.getAccountInfo(usdcMint);
 
     context = await startAnchor(
       "",
@@ -91,7 +98,7 @@ describe("eki", () => {
             info: {
               lamports: 1 * LAMPORTS_PER_SOL,
               data: tokenAccData,
-              owner: TOKEN_PROGRAM,
+              owner: TOKEN_PROGRAM_ID,
               executable: false,
             },
           };
@@ -127,21 +134,87 @@ describe("eki", () => {
     accounts.treasuryB = treasuryB;
 
     const startTime = Date.now() / 1000 + 86400;
+
     const txSig = await program.methods
       .initializeMarket(new BN(startTime))
       .accounts({ ...accounts })
       .rpc({ skipPreflight: true });
     console.log("Your transaction signature", txSig);
 
+    // Market Account
     const marketAccount = await program.account.market.fetch(market);
-    expect(marketAccount.tokenMintA.toString()).toStrictEqual(
-      accounts.tokenMintA.toString()
+    expect(marketAccount.treasuryA.toString()).toStrictEqual(
+      accounts.treasuryA.toString()
     );
-    expect(marketAccount.tokenMintB.toString()).toStrictEqual(
-      accounts.tokenMintB.toString()
+    expect(marketAccount.treasuryB.toString()).toStrictEqual(
+      accounts.treasuryB.toString()
     );
     expect(marketAccount.tokenAVolume.toString()).toStrictEqual("0");
     expect(marketAccount.tokenBVolume.toString()).toStrictEqual("0");
     expect(marketAccount.bump).toStrictEqual(marketBump);
+
+    // Treasury Account
+    const treasuryAccountA = await banksClient.getAccount(accounts.treasuryA);
+    const decodedTreasuryAccountA = AccountLayout.decode(
+      treasuryAccountA?.data
+    );
+    expect(decodedTreasuryAccountA.owner.toBase58()).toBe(market.toBase58());
+    expect(decodedTreasuryAccountA.mint.toBase58()).toBe(
+      accounts.tokenMintA.toBase58()
+    );
+
+    const treasuryAccountB = await banksClient.getAccount(accounts.treasuryB);
+    const decodedTreasuryAccountB = AccountLayout.decode(
+      treasuryAccountB?.data
+    );
+    expect(decodedTreasuryAccountB.owner.toBase58()).toBe(market.toBase58());
+    expect(decodedTreasuryAccountB.mint.toBase58()).toBe(
+      accounts.tokenMintB.toBase58()
+    );
+  });
+
+  it("deposits token when creating a position!", async () => {
+    const depositAmount = 1_000_000_000;
+    const oneHour = 60 * 60;
+
+    const [position, positionBump] = PublicKey.findProgramAddressSync(
+      [
+        Buffer.from("position_a"),
+        accounts.market.toBuffer(),
+        userKeypairs[0].publicKey.toBuffer(),
+      ],
+      program.programId
+    );
+
+    accounts.positionA = position;
+    accounts.depositorTokenAccount = atas[0];
+
+    const txSig = await program.methods
+      .depositTokenA(new BN(depositAmount), new BN(oneHour))
+      .accounts({
+        ...accounts,
+        depositor: userKeypairs[0].publicKey,
+        // depositorTokenAccount: atas[0],
+        // positionA: position,
+      })
+      .signers([userKeypairs[0]])
+      .rpc({ skipPreflight: true });
+    console.log("Your transaction signature", txSig);
+
+    // Position Account
+    const positionAccount = await program.account.positionA.fetch(
+      accounts.positionA
+    );
+    expect(positionAccount.amount.toNumber()).toStrictEqual(depositAmount);
+    expect(
+      positionAccount.endSlot.toNumber() - positionAccount.startSlot.toNumber()
+    ).toBeGreaterThan(MINIMUM_TRADE_DURATION_SECONDS);
+    expect(positionAccount.endSlot.toNumber() % 10).toStrictEqual(0);
+    expect(positionAccount.bump).toStrictEqual(positionBump);
+
+    // Treasury Account
+    let treasuryAccount = await banksClient.getAccount(accounts.treasuryA);
+    let decodedTreasuryAccount = AccountLayout.decode(treasuryAccount?.data);
+    expect(Number(decodedTreasuryAccount.amount)).toBe(depositAmount);
   });
 });

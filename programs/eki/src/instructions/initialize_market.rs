@@ -10,10 +10,10 @@ pub struct InitializeMarket<'info> {
     pub signer: Signer<'info>,
 
     #[account(mint::token_program = token_program)]
-    pub token_mint_a: InterfaceAccount<'info, Mint>,
+    pub token_mint_a: Box<InterfaceAccount<'info, Mint>>,
 
     #[account(mint::token_program = token_program)]
-    pub token_mint_b: InterfaceAccount<'info, Mint>,
+    pub token_mint_b: Box<InterfaceAccount<'info, Mint>>,
 
     #[account(
         init,
@@ -22,7 +22,7 @@ pub struct InitializeMarket<'info> {
         seeds = [Market::SEED_PREFIX.as_bytes()],
         bump
     )]
-    pub market: Account<'info, Market>,
+    pub market: Box<Account<'info, Market>>,
 
     #[account(
         init,
@@ -32,7 +32,7 @@ pub struct InitializeMarket<'info> {
         seeds = [TREASURY_A_SEED.as_bytes(), market.key().as_ref()],
         bump
     )]
-    pub treasury_a: InterfaceAccount<'info, TokenAccount>,
+    pub treasury_a: Box<InterfaceAccount<'info, TokenAccount>>,
 
     #[account(
         init,
@@ -42,7 +42,7 @@ pub struct InitializeMarket<'info> {
         seeds = [TREASURY_B_SEED.as_bytes(), market.key().as_ref()],
         bump
     )]
-    pub treasury_b: InterfaceAccount<'info, TokenAccount>,
+    pub treasury_b: Box<InterfaceAccount<'info, TokenAccount>>,
 
     pub token_program: Interface<'info, TokenInterface>,
     pub system_program: Program<'info, System>,
@@ -58,8 +58,6 @@ impl<'info> InitializeMarket<'info> {
         let start_slot = get_start_slot(start_time).unwrap();
 
         self.market.set_inner(Market::new(
-            self.token_mint_a.key(),
-            self.token_mint_b.key(),
             self.treasury_a.key(),
             self.treasury_b.key(),
             start_slot,
