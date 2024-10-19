@@ -245,9 +245,8 @@ describe("eki", () => {
     const bookkeepingAccount =
       await program.account.bookkeeping.fetch(bookkeeping);
     expect(bookkeepingAccount.aPerB.toNumber()).toStrictEqual(0);
-    expect(bookkeepingAccount.noA.toNumber()).toStrictEqual(0);
+    expect(bookkeepingAccount.noTradeSlots.toNumber()).toStrictEqual(0);
     expect(bookkeepingAccount.bPerA.toNumber()).toStrictEqual(0);
-    expect(bookkeepingAccount.noB.toNumber()).toStrictEqual(0);
     expect(bookkeepingAccount.lastSlot.toNumber()).toStrictEqual(
       marketAccount.startSlot.toNumber()
     );
@@ -280,7 +279,7 @@ describe("eki", () => {
   it("deposits token when creating a position!", async () => {
     const depositAmount = 10 * LAMPORTS_PER_SOL;
     const startSlot = Number(await banksClient.getSlot());
-    const endSlot = startSlot + 9000;
+    const endSlot = startSlot + endSlotInterval * 10000;
 
     const user = userKeypairs[0];
 
@@ -350,13 +349,14 @@ describe("eki", () => {
     const positionAccount = await program.account.positionA.fetch(
       accounts.positionA
     );
+    const marketAccount = await program.account.market.fetch(accounts.market);
     const startPositionSlot = positionAccount.startSlot.toNumber();
     const endPositionSlot = positionAccount.endSlot.toNumber();
     expect(positionAccount.amount.toNumber()).toStrictEqual(depositAmount);
     expect(endPositionSlot - startPositionSlot).toBeGreaterThan(
       endSlotInterval
     );
-    expect(startPositionSlot).toStrictEqual(startSlot);
+    expect(startPositionSlot).toStrictEqual(marketAccount.startSlot.toNumber()); // start slot for position was before market start slot
     expect(endPositionSlot % 10).toStrictEqual(0);
     expect(positionAccount.volume.toNumber()).toStrictEqual(
       Math.floor(depositAmount / (endPositionSlot - startPositionSlot + 1))

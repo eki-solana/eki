@@ -64,7 +64,7 @@ impl<'info> InitializeMarket<'info> {
     pub fn initialize_market(
         &mut self,
         bumps: &InitializeMarketBumps,
-        start_time: i64,
+        start_time: i64, // TODO: change to start_slot
         end_slot_interval: u64,
     ) -> Result<()> {
         msg!("Creating market...");
