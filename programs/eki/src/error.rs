@@ -7,4 +7,7 @@ pub enum CustomErrorCode {
 
     #[msg("Account is too small")]
     AccountTooSmall,
+
+    #[msg("Slot interval has to be power of 10")]
+    InvalidSlotInterval,
 }

@@ -61,10 +61,11 @@ impl<'info> DepositTokenA<'info> {
         msg!("Creating position...");
 
         let start_slot = Clock::get().unwrap().slot;
+        let end_slot_interval = self.market.end_slot_interval;
 
-        // Restrict end slot to be only every 10th slot
-        end_slot = (end_slot + 5) / 10;
-        end_slot *= 10;
+        // Restrict end slot to be only every power of 10th slot
+        end_slot = (end_slot + end_slot_interval / 2) / end_slot_interval;
+        end_slot *= end_slot_interval;
 
         if end_slot <= start_slot {
             return Err(CustomErrorCode::EndSlotAlreadyPassed.into());

@@ -2,7 +2,7 @@ use anchor_lang::prelude::*;
 use anchor_spl::token_interface::{Mint, TokenAccount, TokenInterface};
 
 use crate::ANCHOR_DISCRIMINATOR;
-use crate::{constants::*, state::*};
+use crate::{constants::*, error::*, state::*};
 
 #[derive(Accounts)]
 pub struct InitializeMarket<'info> {
@@ -65,14 +65,20 @@ impl<'info> InitializeMarket<'info> {
         &mut self,
         bumps: &InitializeMarketBumps,
         start_time: i64,
+        end_slot_interval: u64,
     ) -> Result<()> {
         msg!("Creating market...");
         let start_slot = get_start_slot(start_time).unwrap();
+
+        if !is_power_of_ten(end_slot_interval) {
+            return Err(CustomErrorCode::InvalidSlotInterval.into());
+        }
 
         self.market.set_inner(Market::new(
             self.treasury_a.key(),
             self.treasury_b.key(),
             start_slot,
+            end_slot_interval,
             bumps.market,
         ));
 
@@ -96,4 +102,17 @@ fn get_start_slot(start_time: i64) -> Result<u64> {
     let estimated_slot_diff = (time_diff * 1000 / 400) as u64;
 
     return Ok(current_slot + estimated_slot_diff);
+}
+
+fn is_power_of_ten(n: u64) -> bool {
+    if n == 0 {
+        return false;
+    }
+
+    let mut num = n;
+    while num % 10 == 0 {
+        num /= 10;
+    }
+
+    num == 1
 }
