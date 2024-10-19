@@ -108,11 +108,7 @@ describe("eki", () => {
 
   it("initializes market!", async () => {
     const [market, marketBump] = PublicKey.findProgramAddressSync(
-      [
-        Buffer.from("market"),
-        accounts.tokenMintA.toBuffer(),
-        accounts.tokenMintB.toBuffer(),
-      ],
+      [Buffer.from("market")],
       program.programId
     );
 
