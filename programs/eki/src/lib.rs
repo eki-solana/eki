@@ -18,4 +18,8 @@ pub mod eki {
     pub fn initialize_market(ctx: Context<InitializeMarket>, start_time: i64) -> Result<()> {
         ctx.accounts.initialize_market(&ctx.bumps, start_time)
     }
+
+    pub fn deposit_token_a(ctx: Context<DepositTokenA>, amount: u64) -> Result<()> {
+        Ok(())
+    }
 }

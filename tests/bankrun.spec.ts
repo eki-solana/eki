@@ -102,12 +102,6 @@ describe("eki", () => {
     provider = new BankrunProvider(context);
     anchor.setProvider(provider);
 
-    const usdcMintInfo = await provider.connection.getAccountInfo(usdcMint);
-    console.log("Usdc Mint Info", usdcMintInfo);
-
-    const nativeInfo = await provider.connection.getAccountInfo(NATIVE_MINT);
-    console.log("Native Info", nativeInfo);
-
     program = new Program<Eki>(IDL as Eki, provider);
     banksClient = context.banksClient;
   });

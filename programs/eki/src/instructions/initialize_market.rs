@@ -77,10 +77,10 @@ fn get_start_slot(start_time: i64) -> Result<u64> {
 
     if start_time <= current_time {
         return Ok(current_slot);
-    } else {
-        let time_diff = start_time - current_time;
-        let estimated_slot_diff = (time_diff * 1000 / 400) as u64;
-
-        return Ok(current_slot + estimated_slot_diff);
     }
+
+    let time_diff = start_time - current_time;
+    let estimated_slot_diff = (time_diff * 1000 / 400) as u64;
+
+    return Ok(current_slot + estimated_slot_diff);
 }
