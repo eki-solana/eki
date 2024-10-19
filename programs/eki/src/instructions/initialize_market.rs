@@ -1,16 +1,18 @@
 use anchor_lang::prelude::*;
-use anchor_spl::token_interface::{Mint, TokenInterface};
+use anchor_spl::token_interface::{Mint, TokenAccount, TokenInterface};
 
-use crate::state::*;
 use crate::ANCHOR_DISCRIMINATOR;
+use crate::{constants::*, state::*};
 
 #[derive(Accounts)]
 pub struct InitializeMarket<'info> {
     #[account(mut)]
     pub signer: Signer<'info>,
 
+    #[account(mint::token_program = token_program)]
     pub token_mint_a: InterfaceAccount<'info, Mint>,
 
+    #[account(mint::token_program = token_program)]
     pub token_mint_b: InterfaceAccount<'info, Mint>,
 
     #[account(
@@ -21,6 +23,26 @@ pub struct InitializeMarket<'info> {
         bump
     )]
     pub market: Account<'info, Market>,
+
+    #[account(
+        init,
+        token::mint = token_mint_a,
+        token::authority = market,
+        payer = signer,
+        seeds = [TREASURY_A_SEED.as_bytes(), market.key().as_ref()],
+        bump
+    )]
+    pub treasury_a: InterfaceAccount<'info, TokenAccount>,
+
+    #[account(
+        init,
+        token::mint = token_mint_b,
+        token::authority = market,
+        payer = signer,
+        seeds = [TREASURY_B_SEED.as_bytes(), market.key().as_ref()],
+        bump
+    )]
+    pub treasury_b: InterfaceAccount<'info, TokenAccount>,
 
     pub token_program: Interface<'info, TokenInterface>,
     pub system_program: Program<'info, System>,
@@ -38,6 +60,8 @@ impl<'info> InitializeMarket<'info> {
         self.market.set_inner(Market::new(
             self.token_mint_a.key(),
             self.token_mint_b.key(),
+            self.treasury_a.key(),
+            self.treasury_b.key(),
             start_slot,
             bumps.market,
         ));

@@ -5,6 +5,8 @@ use anchor_lang::prelude::*;
 pub struct Market {
     pub token_mint_a: Pubkey,
     pub token_mint_b: Pubkey,
+    pub treasury_a: Pubkey,
+    pub treasury_b: Pubkey,
     pub token_a_volume: u64,
     pub token_b_volume: u64,
     pub start_slot: u64,
@@ -15,10 +17,19 @@ pub struct Market {
 impl Market {
     pub const SEED_PREFIX: &'static str = "market";
 
-    pub fn new(mint_a: Pubkey, mint_b: Pubkey, start_slot: u64, bump: u8) -> Self {
+    pub fn new(
+        mint_a: Pubkey,
+        mint_b: Pubkey,
+        treasury_a: Pubkey,
+        treasury_b: Pubkey,
+        start_slot: u64,
+        bump: u8,
+    ) -> Self {
         Self {
             token_mint_a: mint_a,
             token_mint_b: mint_b,
+            treasury_a,
+            treasury_b,
             token_a_volume: 0,
             token_b_volume: 0,
             start_slot,
