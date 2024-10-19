@@ -173,9 +173,15 @@ describe("eki", () => {
       program.programId
     );
 
+    const [bookkeeping, bookkeepingBump] = PublicKey.findProgramAddressSync(
+      [Buffer.from("bookkeeping"), market.toBuffer()],
+      program.programId
+    );
+
     accounts.market = market;
     accounts.treasuryA = treasuryA;
     accounts.treasuryB = treasuryB;
+    accounts.bookkeping = bookkeeping;
 
     const startTime = Date.now() / 1000 + 86400;
 
@@ -196,6 +202,18 @@ describe("eki", () => {
     expect(marketAccount.tokenAVolume.toString()).toStrictEqual("0");
     expect(marketAccount.tokenBVolume.toString()).toStrictEqual("0");
     expect(marketAccount.bump).toStrictEqual(marketBump);
+
+    // Bookkeeping
+    const bookkeepingAccount =
+      await program.account.bookkeeping.fetch(bookkeeping);
+    expect(bookkeepingAccount.aPerB.toNumber()).toStrictEqual(0);
+    expect(bookkeepingAccount.noA.toNumber()).toStrictEqual(0);
+    expect(bookkeepingAccount.bPerA.toNumber()).toStrictEqual(0);
+    expect(bookkeepingAccount.noB.toNumber()).toStrictEqual(0);
+    expect(bookkeepingAccount.lastSlot.toNumber()).toStrictEqual(
+      marketAccount.startSlot.toNumber()
+    );
+    expect(bookkeepingAccount.bump).toStrictEqual(bookkeepingBump);
 
     // Treasury Account
     const treasuryAccountA = await banksClient.getAccount(accounts.treasuryA);

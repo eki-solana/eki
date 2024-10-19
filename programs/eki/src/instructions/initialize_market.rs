@@ -44,6 +44,15 @@ pub struct InitializeMarket<'info> {
     )]
     pub treasury_b: Box<InterfaceAccount<'info, TokenAccount>>,
 
+    #[account(
+        init,
+        payer = signer,
+        space = ANCHOR_DISCRIMINATOR + Bookkeeping::INIT_SPACE,
+        seeds = [Bookkeeping::SEED_PREFIX.as_bytes(), market.key().as_ref()],
+        bump
+    )]
+    pub bookkeeping: Box<Account<'info, Bookkeeping>>,
+
     pub token_program: Interface<'info, TokenInterface>,
     pub system_program: Program<'info, System>,
 }
@@ -63,6 +72,9 @@ impl<'info> InitializeMarket<'info> {
             start_slot,
             bumps.market,
         ));
+
+        self.bookkeeping
+            .set_inner(Bookkeeping::new(start_slot, bumps.bookkeeping));
 
         msg!("Market created starting at slot {}", start_slot);
         Ok(())
