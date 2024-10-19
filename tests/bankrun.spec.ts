@@ -4,18 +4,25 @@ import type { Eki } from "../target/types/eki";
 import {
   ACCOUNT_SIZE,
   AccountLayout,
+  createAssociatedTokenAccount,
+  createCloseAccountInstruction,
+  createInitializeAccount3Instruction,
+  createSyncNativeInstruction,
+  createTransferInstruction,
   getAssociatedTokenAddressSync,
+  getMinimumBalanceForRentExemptAccount,
   NATIVE_MINT,
   TOKEN_2022_PROGRAM_ID,
   TOKEN_PROGRAM_ID,
 } from "@solana/spl-token";
 import {
   Connection,
-  Keypair,
   LAMPORTS_PER_SOL,
   PublicKey,
+  SystemProgram,
+  Transaction,
 } from "@solana/web3.js";
-import { confirmTransaction, makeKeypairs } from "@solana-developers/helpers";
+import { makeKeypairs } from "@solana-developers/helpers";
 import { BankrunProvider, startAnchor } from "anchor-bankrun";
 import IDL from "../target/idl/eki.json";
 import { BanksClient, ProgramTestContext } from "solana-bankrun";
@@ -36,9 +43,17 @@ describe("eki", () => {
   const usdcMint = new PublicKey(
     "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
   );
-  const atas = userKeypairs.map((user) =>
+  const usdcAtas = userKeypairs.map((user) =>
     getAssociatedTokenAddressSync(
       usdcMint,
+      user.publicKey,
+      false,
+      TOKEN_PROGRAM_ID
+    )
+  );
+  const solAtas = userKeypairs.map((user) =>
+    getAssociatedTokenAddressSync(
+      NATIVE_MINT,
       user.publicKey,
       false,
       TOKEN_PROGRAM_ID
@@ -47,8 +62,8 @@ describe("eki", () => {
 
   const accounts: Record<string, PublicKey> = {
     tokenProgram: TOKEN_PROGRAM_ID,
-    tokenMintA: usdcMint,
-    tokenMintB: NATIVE_MINT,
+    tokenMintA: NATIVE_MINT,
+    tokenMintB: usdcMint,
   };
 
   beforeAll(async () => {
@@ -74,13 +89,42 @@ describe("eki", () => {
             },
           };
         }),
-        ...atas.map((ata, i) => {
+        ...usdcAtas.map((ata, i) => {
           const tokenAccData = Buffer.alloc(ACCOUNT_SIZE);
           AccountLayout.encode(
             {
               mint: usdcMint,
               owner: userKeypairs[i].publicKey,
               amount: 1_000_000_000_000n,
+              delegateOption: 0,
+              delegate: PublicKey.default,
+              delegatedAmount: 0n,
+              state: 1,
+              isNativeOption: 0,
+              isNative: 0n,
+              closeAuthorityOption: 0,
+              closeAuthority: PublicKey.default,
+            },
+            tokenAccData
+          );
+
+          return {
+            address: ata,
+            info: {
+              lamports: 1 * LAMPORTS_PER_SOL,
+              data: tokenAccData,
+              owner: TOKEN_PROGRAM_ID,
+              executable: false,
+            },
+          };
+        }),
+        ...solAtas.map((ata, i) => {
+          const tokenAccData = Buffer.alloc(ACCOUNT_SIZE);
+          AccountLayout.encode(
+            {
+              mint: NATIVE_MINT,
+              owner: userKeypairs[i].publicKey,
+              amount: 0n,
               delegateOption: 0,
               delegate: PublicKey.default,
               delegatedAmount: 0n,
@@ -174,20 +218,59 @@ describe("eki", () => {
   });
 
   it("deposits token when creating a position!", async () => {
-    const depositAmount = 1_000_000_000;
+    const depositAmount = 10 * LAMPORTS_PER_SOL;
     const oneHour = 60 * 60;
+    const user = userKeypairs[0];
 
     const [position, positionBump] = PublicKey.findProgramAddressSync(
       [
         Buffer.from("position_a"),
         accounts.market.toBuffer(),
-        userKeypairs[0].publicKey.toBuffer(),
+        user.publicKey.toBuffer(),
       ],
       program.programId
     );
 
+    const auxAccount = makeKeypairs(1)[0];
+    const ixs = [
+      SystemProgram.createAccount({
+        fromPubkey: user.publicKey,
+        newAccountPubkey: auxAccount.publicKey,
+        space: ACCOUNT_SIZE,
+        // lamports:
+        //   (await getMinimumBalanceForRentExemptAccount(provider.connection)) +
+        //   depositAmount, // rent + amount
+        lamports: LAMPORTS_PER_SOL + depositAmount, // rent + amount
+        programId: TOKEN_PROGRAM_ID,
+      }),
+      createInitializeAccount3Instruction(
+        auxAccount.publicKey,
+        NATIVE_MINT,
+        user.publicKey,
+        TOKEN_PROGRAM_ID
+      ),
+      createTransferInstruction(
+        auxAccount.publicKey,
+        solAtas[0],
+        user.publicKey,
+        depositAmount
+      ),
+      createCloseAccountInstruction(
+        auxAccount.publicKey,
+        user.publicKey,
+        user.publicKey
+      ),
+    ];
+
+    const blockhash = context.lastBlockhash;
+    const tx = new Transaction();
+    tx.recentBlockhash = blockhash;
+    tx.add(...ixs);
+    tx.sign(user, auxAccount);
+    await banksClient.processTransaction(tx);
+
     accounts.positionA = position;
-    accounts.depositorTokenAccount = atas[0];
+    accounts.depositorTokenAccount = solAtas[0];
 
     const txSig = await program.methods
       .depositTokenA(new BN(depositAmount), new BN(oneHour))

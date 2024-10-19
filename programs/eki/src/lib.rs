@@ -23,6 +23,8 @@ pub mod eki {
         ctx.accounts
             .initialize_position_account(&ctx.bumps, amount, duration)?;
 
-        ctx.accounts.transfer_tokens_to_treasury(amount)
+        ctx.accounts.transfer_tokens_to_treasury(amount)?;
+
+        ctx.accounts.update_market()
     }
 }
