@@ -129,18 +129,38 @@ impl<'info> DepositTokenA<'info> {
             ((exit_slot - exits.start_slot) / self.market.end_slot_interval) % EXITS_LENGTH as u64;
         exits.token_a[position as usize] += exit_amount;
 
-        if current_slot < self.market.start_slot {
+        if current_slot <= self.market.start_slot {
             return Ok(());
         }
 
-        let old_pointer = exits.pointer;
-        let new_pointer = ((current_slot - exits.start_slot) / self.market.end_slot_interval)
+        let mut quotient =
+            (current_slot - exits.start_slot) / self.market.end_slot_interval / EXITS_LENGTH as u64;
+        let mut new_pointer = ((current_slot - exits.start_slot) / self.market.end_slot_interval)
             % EXITS_LENGTH as u64;
 
-        // for loop from old_pointer to new pointer and update bookkeeping account
-        // self.bookkeeping.update();
-
+        let old_pointer = exits.pointer;
         exits.pointer = new_pointer;
+
+        if new_pointer < old_pointer {
+            new_pointer += EXITS_LENGTH as u64;
+            quotient -= 1;
+        }
+
+        // start from old_pointer + 1 because old_pointer was handled before with new_pointer
+        for i in (old_pointer + 1)..=new_pointer {
+            let p = i % EXITS_LENGTH as u64;
+
+            let slot = i * self.market.end_slot_interval
+                + exits.start_slot
+                + quotient * self.market.end_slot_interval * EXITS_LENGTH as u64;
+
+            // update bookkeeping account to current state before trade
+            self.bookkeeping
+                .update(self.market.token_a_volume, self.market.token_b_volume, slot);
+
+            self.market.token_a_volume -= exits.token_a[p as usize];
+            self.market.token_b_volume -= exits.token_b[p as usize];
+        }
 
         Ok(())
     }
