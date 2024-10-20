@@ -41,12 +41,16 @@ pub mod eki {
         ctx.accounts.update_market(current_slot)
     }
 
-    pub fn deposit_token_b(ctx: Context<DepositTokenB>, amount: u64, duration: u64) -> Result<()> {
+    pub fn deposit_token_b(ctx: Context<DepositTokenB>, amount: u64, end_slot: u64) -> Result<()> {
+        let current_slot = Clock::get().unwrap().slot;
+
         ctx.accounts
-            .initialize_position_account(&ctx.bumps, amount, duration)?;
+            .initialize_position_account(&ctx.bumps, amount, end_slot, current_slot)?;
 
         ctx.accounts.transfer_tokens_to_treasury(amount)?;
 
-        ctx.accounts.update_market()
+        ctx.accounts.update_exits(current_slot)?;
+
+        ctx.accounts.update_market(current_slot)
     }
 }

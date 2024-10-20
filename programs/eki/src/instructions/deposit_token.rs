@@ -246,6 +246,7 @@ impl<'info> DepositTokenB<'info> {
         bumps: &DepositTokenBBumps,
         amount: u64,
         mut end_slot: u64,
+        current_slot: u64,
     ) -> Result<()> {
         msg!("Creating position...");
 
@@ -254,7 +255,6 @@ impl<'info> DepositTokenB<'info> {
         }
 
         let start_slot: u64;
-        let current_slot = Clock::get().unwrap().slot;
         if current_slot < self.market.start_slot {
             start_slot = self.market.start_slot;
         } else {
@@ -298,13 +298,58 @@ impl<'info> DepositTokenB<'info> {
         )
     }
 
-    pub fn update_market(&mut self) -> Result<()> {
+    pub fn update_exits(&mut self, current_slot: u64) -> Result<()> {
+        let mut exits = self.exits.load_mut()?;
+
+        let exit_slot = self.position_b.end_slot;
+        let exit_amount = self.position_b.get_volume();
+
+        let position =
+            ((exit_slot - exits.start_slot) / self.market.end_slot_interval) % EXITS_LENGTH as u64;
+        exits.token_b[position as usize] += exit_amount;
+
+        if current_slot <= self.market.start_slot {
+            return Ok(());
+        }
+
+        let mut quotient =
+            (current_slot - exits.start_slot) / self.market.end_slot_interval / EXITS_LENGTH as u64;
+        let mut new_pointer = ((current_slot - exits.start_slot) / self.market.end_slot_interval)
+            % EXITS_LENGTH as u64;
+
+        let old_pointer = exits.pointer;
+        exits.pointer = new_pointer;
+
+        if new_pointer < old_pointer {
+            new_pointer += EXITS_LENGTH as u64;
+            quotient -= 1;
+        }
+
+        // start from old_pointer + 1 because old_pointer was handled before with new_pointer
+        for i in (old_pointer + 1)..=new_pointer {
+            let p = i % EXITS_LENGTH as u64;
+
+            let slot = i * self.market.end_slot_interval
+                + exits.start_slot
+                + quotient * self.market.end_slot_interval * EXITS_LENGTH as u64;
+
+            // update bookkeeping account to current state before trade
+            self.bookkeeping
+                .update(self.market.token_a_volume, self.market.token_b_volume, slot);
+
+            self.market.token_a_volume -= exits.token_a[p as usize];
+            self.market.token_b_volume -= exits.token_b[p as usize];
+        }
+
+        Ok(())
+    }
+
+    pub fn update_market(&mut self, current_slot: u64) -> Result<()> {
         let old_volume_b = self.market.token_b_volume;
 
         // update market account
         self.market.token_b_volume += self.position_b.get_volume();
 
-        let current_slot = Clock::get().unwrap().slot;
         if current_slot <= self.market.start_slot {
             return Ok(());
         }
