@@ -24,6 +24,7 @@ import { BankrunProvider, startAnchor } from "anchor-bankrun";
 import IDL from "../target/idl/eki.json";
 import { BanksClient, ProgramTestContext } from "solana-bankrun";
 import { SYSTEM_PROGRAM_ID } from "@coral-xyz/anchor/dist/cjs/native/system";
+import { createTransferWrapSolTx } from "./utils";
 
 const TOKEN_PROGRAM: typeof TOKEN_2022_PROGRAM_ID | typeof TOKEN_PROGRAM_ID =
   TOKEN_2022_PROGRAM_ID;
@@ -291,6 +292,7 @@ describe("eki", () => {
     const endSlot = startSlot + endSlotInterval * 10000;
 
     const user = userKeypairs[userId];
+    const depositAmount = userDeposits[userId];
 
     const [position, positionBump] = PublicKey.findProgramAddressSync(
       [
@@ -301,42 +303,12 @@ describe("eki", () => {
       program.programId
     );
 
-    const auxAccount = makeKeypairs(1)[0];
-    const ixs = [
-      SystemProgram.createAccount({
-        fromPubkey: user.publicKey,
-        newAccountPubkey: auxAccount.publicKey,
-        space: ACCOUNT_SIZE,
-        // lamports:
-        //   (await getMinimumBalanceForRentExemptAccount(provider.connection)) +
-        //   depositAmount, // rent + amount
-        lamports: LAMPORTS_PER_SOL + userDeposits[userId], // rent + amount
-        programId: TOKEN_PROGRAM_ID,
-      }),
-      createInitializeAccount3Instruction(
-        auxAccount.publicKey,
-        NATIVE_MINT,
-        user.publicKey,
-        TOKEN_PROGRAM_ID
-      ),
-      createTransferInstruction(
-        auxAccount.publicKey,
-        solAtas[userId],
-        user.publicKey,
-        userDeposits[userId]
-      ),
-      createCloseAccountInstruction(
-        auxAccount.publicKey,
-        user.publicKey,
-        user.publicKey
-      ),
-    ];
-
-    const blockhash = context.lastBlockhash;
-    const tx = new Transaction();
-    tx.recentBlockhash = blockhash;
-    tx.add(...ixs);
-    tx.sign(user, auxAccount);
+    const tx = createTransferWrapSolTx(
+      context,
+      user,
+      solAtas[userId],
+      depositAmount
+    );
     await banksClient.processTransaction(tx);
 
     allPositionsA[userId] = position;
@@ -411,42 +383,12 @@ describe("eki", () => {
       program.programId
     );
 
-    const auxAccount = makeKeypairs(1)[0];
-    const ixs = [
-      SystemProgram.createAccount({
-        fromPubkey: user.publicKey,
-        newAccountPubkey: auxAccount.publicKey,
-        space: ACCOUNT_SIZE,
-        // lamports:
-        //   (await getMinimumBalanceForRentExemptAccount(provider.connection)) +
-        //   depositAmount, // rent + amount
-        lamports: LAMPORTS_PER_SOL + depositAmount, // rent + amount
-        programId: TOKEN_PROGRAM_ID,
-      }),
-      createInitializeAccount3Instruction(
-        auxAccount.publicKey,
-        NATIVE_MINT,
-        user.publicKey,
-        TOKEN_PROGRAM_ID
-      ),
-      createTransferInstruction(
-        auxAccount.publicKey,
-        solAtas[userId],
-        user.publicKey,
-        depositAmount
-      ),
-      createCloseAccountInstruction(
-        auxAccount.publicKey,
-        user.publicKey,
-        user.publicKey
-      ),
-    ];
-
-    const blockhash = context.lastBlockhash;
-    const tx = new Transaction();
-    tx.recentBlockhash = blockhash;
-    tx.add(...ixs);
-    tx.sign(user, auxAccount);
+    const tx = createTransferWrapSolTx(
+      context,
+      user,
+      solAtas[userId],
+      depositAmount
+    );
     await banksClient.processTransaction(tx);
 
     allPositionsA[userId] = position;
@@ -598,42 +540,12 @@ describe("eki", () => {
       program.programId
     );
 
-    const auxAccount = makeKeypairs(1)[0];
-    const ixs = [
-      SystemProgram.createAccount({
-        fromPubkey: user.publicKey,
-        newAccountPubkey: auxAccount.publicKey,
-        space: ACCOUNT_SIZE,
-        // lamports:
-        //   (await getMinimumBalanceForRentExemptAccount(provider.connection)) +
-        //   depositAmount, // rent + amount
-        lamports: LAMPORTS_PER_SOL + depositAmount, // rent + amount
-        programId: TOKEN_PROGRAM_ID,
-      }),
-      createInitializeAccount3Instruction(
-        auxAccount.publicKey,
-        NATIVE_MINT,
-        user.publicKey,
-        TOKEN_PROGRAM_ID
-      ),
-      createTransferInstruction(
-        auxAccount.publicKey,
-        solAtas[userId],
-        user.publicKey,
-        depositAmount
-      ),
-      createCloseAccountInstruction(
-        auxAccount.publicKey,
-        user.publicKey,
-        user.publicKey
-      ),
-    ];
-
-    const blockhash = context.lastBlockhash;
-    const tx = new Transaction();
-    tx.recentBlockhash = blockhash;
-    tx.add(...ixs);
-    tx.sign(user, auxAccount);
+    const tx = createTransferWrapSolTx(
+      context,
+      user,
+      solAtas[userId],
+      depositAmount
+    );
     await banksClient.processTransaction(tx);
 
     allPositionsA[userId] = position;
@@ -727,42 +639,12 @@ describe("eki", () => {
       program.programId
     );
 
-    const auxAccount = makeKeypairs(1)[0];
-    const ixs = [
-      SystemProgram.createAccount({
-        fromPubkey: user.publicKey,
-        newAccountPubkey: auxAccount.publicKey,
-        space: ACCOUNT_SIZE,
-        // lamports:
-        //   (await getMinimumBalanceForRentExemptAccount(provider.connection)) +
-        //   depositAmount, // rent + amount
-        lamports: LAMPORTS_PER_SOL + depositAmount, // rent + amount
-        programId: TOKEN_PROGRAM_ID,
-      }),
-      createInitializeAccount3Instruction(
-        auxAccount.publicKey,
-        NATIVE_MINT,
-        user.publicKey,
-        TOKEN_PROGRAM_ID
-      ),
-      createTransferInstruction(
-        auxAccount.publicKey,
-        solAtas[userId],
-        user.publicKey,
-        depositAmount
-      ),
-      createCloseAccountInstruction(
-        auxAccount.publicKey,
-        user.publicKey,
-        user.publicKey
-      ),
-    ];
-
-    const blockhash = context.lastBlockhash;
-    const tx = new Transaction();
-    tx.recentBlockhash = blockhash;
-    tx.add(...ixs);
-    tx.sign(user, auxAccount);
+    const tx = createTransferWrapSolTx(
+      context,
+      user,
+      solAtas[userId],
+      depositAmount
+    );
     await banksClient.processTransaction(tx);
 
     allPositionsA[userId] = position;
@@ -860,8 +742,6 @@ describe("eki", () => {
             depositAmount / (endSlot - currentSlot))
       )
     );
-    console.log("a per b", bookkeepingAccount.aPerB.toNumber());
-    console.log("b per a", bookkeepingAccount.bPerA.toNumber());
     expect(bookkeepingAccount.noTradeSlots.toNumber()).toStrictEqual(
       lastSlot - startSlot
     );
