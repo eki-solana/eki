@@ -26,7 +26,7 @@ import { createTransferWrapSolTx } from "./utils";
 const TOKEN_PROGRAM: typeof TOKEN_2022_PROGRAM_ID | typeof TOKEN_PROGRAM_ID =
   TOKEN_2022_PROGRAM_ID;
 
-const EXITS_ACCOUNT_SIZE = 10240016;
+const EXITS_ACCOUNT_SIZE = 10240024;
 
 const NUM_USERS = 10;
 
@@ -707,8 +707,6 @@ describe("eki", () => {
     expect(endPositionSlot - startPositionSlot).toBeGreaterThan(
       endSlotInterval
     );
-    console.log("volume a", marketAccount.tokenAVolume.toNumber());
-    console.log("volume b", marketAccount.tokenBVolume.toNumber());
 
     expect(
       Math.floor(positionAccount.bookkeeping.toNumber() / BOOKKEEPING_PRECISION)
