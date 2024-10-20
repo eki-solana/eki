@@ -33,13 +33,15 @@ const MINIMUM_TRADE_DURATION_SECONDS = 10;
 
 const EXITS_ACCOUNT_SIZE = 10240016;
 
+const NUM_USERS = 10;
+
 describe("eki", () => {
   let program = anchor.workspace.Eki as Program<Eki>;
   let context: ProgramTestContext;
   let banksClient: BanksClient;
   let provider: BankrunProvider;
 
-  const userKeypairs = makeKeypairs(10);
+  const userKeypairs = makeKeypairs(NUM_USERS);
   const usdcMint = new PublicKey(
     "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
   );
@@ -59,6 +61,13 @@ describe("eki", () => {
       TOKEN_PROGRAM_ID
     )
   );
+
+  const userDeposits = userKeypairs.map(
+    (_, i) => (i + 1) * 10 * LAMPORTS_PER_SOL
+  );
+
+  const allPositionsA = Array(NUM_USERS);
+  const allPositionsB = Array(NUM_USERS);
 
   const accounts: Record<string, PublicKey> = {
     tokenProgram: TOKEN_PROGRAM_ID,
@@ -276,12 +285,122 @@ describe("eki", () => {
     );
   });
 
-  it("deposits token when creating a position!", async () => {
-    const depositAmount = 10 * LAMPORTS_PER_SOL;
-    const startSlot = Number(await banksClient.getSlot());
+  it("deposits token A when creating a position before market starts!", async () => {
+    const userId = 0;
     const endSlot = startSlot + endSlotInterval * 10000;
 
-    const user = userKeypairs[0];
+    const user = userKeypairs[userId];
+
+    const [position, positionBump] = PublicKey.findProgramAddressSync(
+      [
+        Buffer.from("position_a"),
+        accounts.market.toBuffer(),
+        user.publicKey.toBuffer(),
+      ],
+      program.programId
+    );
+
+    const auxAccount = makeKeypairs(1)[0];
+    const ixs = [
+      SystemProgram.createAccount({
+        fromPubkey: user.publicKey,
+        newAccountPubkey: auxAccount.publicKey,
+        space: ACCOUNT_SIZE,
+        // lamports:
+        //   (await getMinimumBalanceForRentExemptAccount(provider.connection)) +
+        //   depositAmount, // rent + amount
+        lamports: LAMPORTS_PER_SOL + userDeposits[userId], // rent + amount
+        programId: TOKEN_PROGRAM_ID,
+      }),
+      createInitializeAccount3Instruction(
+        auxAccount.publicKey,
+        NATIVE_MINT,
+        user.publicKey,
+        TOKEN_PROGRAM_ID
+      ),
+      createTransferInstruction(
+        auxAccount.publicKey,
+        solAtas[userId],
+        user.publicKey,
+        userDeposits[userId]
+      ),
+      createCloseAccountInstruction(
+        auxAccount.publicKey,
+        user.publicKey,
+        user.publicKey
+      ),
+    ];
+
+    const blockhash = context.lastBlockhash;
+    const tx = new Transaction();
+    tx.recentBlockhash = blockhash;
+    tx.add(...ixs);
+    tx.sign(user, auxAccount);
+    await banksClient.processTransaction(tx);
+
+    allPositionsA[userId] = position;
+    accounts.positionA = position;
+    accounts.depositorTokenAccount = solAtas[userId];
+
+    const txSig = await program.methods
+      .depositTokenA(new BN(userDeposits[userId]), new BN(endSlot))
+      .accounts({
+        ...accounts,
+        depositor: user.publicKey,
+        // depositorTokenAccount: atas[0],
+        // positionA: position,
+      })
+      .signers([userKeypairs[userId]])
+      .rpc({ skipPreflight: true });
+    console.log("Your transaction signature", txSig);
+
+    // Market Account
+    const marketAccount = await program.account.market.fetch(accounts.market);
+    expect(marketAccount.tokenAVolume.toNumber()).toStrictEqual(
+      userDeposits[userId] / (endSlot - startSlot)
+    );
+
+    // Position Account
+    const positionAccount = await program.account.positionA.fetch(
+      accounts.positionA
+    );
+    const startPositionSlot = positionAccount.startSlot.toNumber();
+    const endPositionSlot = positionAccount.endSlot.toNumber();
+    expect(positionAccount.amount.toNumber()).toStrictEqual(
+      userDeposits[userId]
+    );
+    expect(endPositionSlot - startPositionSlot).toBeGreaterThan(
+      endSlotInterval
+    );
+    expect(positionAccount.bookkeeping.toNumber()).toStrictEqual(0);
+    expect(positionAccount.noTradeSlots.toNumber()).toStrictEqual(0);
+    expect(startPositionSlot).toStrictEqual(marketAccount.startSlot.toNumber()); // start slot for position was before market start slot
+    expect(endPositionSlot % 10).toStrictEqual(0);
+    expect(positionAccount.bump).toStrictEqual(positionBump);
+
+    // Bookkeeping Account
+    const bookkeepingAccount = await program.account.bookkeeping.fetch(
+      accounts.bookkeeping
+    );
+    expect(bookkeepingAccount.aPerB.toNumber()).toStrictEqual(0);
+    expect(bookkeepingAccount.bPerA.toNumber()).toStrictEqual(0);
+    expect(bookkeepingAccount.noTradeSlots.toNumber()).toStrictEqual(0);
+
+    // Treasury Account
+    let treasuryAccount = await banksClient.getAccount(accounts.treasuryA);
+    let decodedTreasuryAccount = AccountLayout.decode(treasuryAccount?.data);
+    expect(Number(decodedTreasuryAccount.amount)).toBe(userDeposits[userId]);
+  });
+
+  it("deposits token A when creating a position when market has started!", async () => {
+    const userId = 1;
+    const depositAmount = userDeposits[userId];
+    const endSlot = startSlot + endSlotInterval * 10000;
+    const jumpSlots = 5000;
+
+    context.warpToSlot(BigInt(startSlot + jumpSlots));
+
+    const user = userKeypairs[userId];
 
     const [position, positionBump] = PublicKey.findProgramAddressSync(
       [
@@ -312,7 +431,7 @@ describe("eki", () => {
       ),
       createTransferInstruction(
         auxAccount.publicKey,
-        solAtas[0],
+        solAtas[userId],
         user.publicKey,
         depositAmount
       ),
@@ -330,18 +449,19 @@ describe("eki", () => {
     tx.sign(user, auxAccount);
     await banksClient.processTransaction(tx);
 
+    allPositionsA[userId] = position;
     accounts.positionA = position;
-    accounts.depositorTokenAccount = solAtas[0];
+    accounts.depositorTokenAccount = solAtas[userId];
 
     const txSig = await program.methods
       .depositTokenA(new BN(depositAmount), new BN(endSlot))
       .accounts({
         ...accounts,
-        depositor: userKeypairs[0].publicKey,
+        depositor: user.publicKey,
         // depositorTokenAccount: atas[0],
         // positionA: position,
       })
-      .signers([userKeypairs[0]])
+      .signers([userKeypairs[userId]])
       .rpc({ skipPreflight: true });
     console.log("Your transaction signature", txSig);
 
@@ -349,22 +469,45 @@ describe("eki", () => {
     const positionAccount = await program.account.positionA.fetch(
       accounts.positionA
     );
-    const marketAccount = await program.account.market.fetch(accounts.market);
     const startPositionSlot = positionAccount.startSlot.toNumber();
     const endPositionSlot = positionAccount.endSlot.toNumber();
     expect(positionAccount.amount.toNumber()).toStrictEqual(depositAmount);
     expect(endPositionSlot - startPositionSlot).toBeGreaterThan(
       endSlotInterval
     );
-    expect(positionAccount.bookkeeping.toNumber()).toStrictEqual(0);
-    expect(positionAccount.noTradeSlots.toNumber()).toStrictEqual(0);
-    expect(startPositionSlot).toStrictEqual(marketAccount.startSlot.toNumber()); // start slot for position was before market start slot
+    expect(positionAccount.bookkeeping.toNumber()).toStrictEqual(0); // still no trade since both deposits are on token A
+    expect(positionAccount.noTradeSlots.toNumber()).toStrictEqual(jumpSlots);
+    expect(startPositionSlot).toStrictEqual(startSlot + jumpSlots);
     expect(endPositionSlot % 10).toStrictEqual(0);
     expect(positionAccount.bump).toStrictEqual(positionBump);
+
+    // Market Account
+    const positionAccount0 = await program.account.positionA.fetch(
+      allPositionsA[0]
+    );
+    const marketAccount = await program.account.market.fetch(accounts.market);
+    expect(marketAccount.tokenAVolume.toNumber()).toStrictEqual(
+      Math.floor(
+        userDeposits[0] /
+          (positionAccount0.endSlot.toNumber() -
+            positionAccount0.startSlot.toNumber()) +
+          depositAmount / (endSlot - positionAccount.startSlot.toNumber())
+      )
+    );
+
+    // Bookkeeping Account
+    const bookkeepingAccount = await program.account.bookkeeping.fetch(
+      accounts.bookkeeping
+    );
+    expect(bookkeepingAccount.aPerB.toNumber()).toStrictEqual(0);
+    expect(bookkeepingAccount.bPerA.toNumber()).toStrictEqual(0);
+    expect(bookkeepingAccount.noTradeSlots.toNumber()).toStrictEqual(jumpSlots);
 
     // Treasury Account
     let treasuryAccount = await banksClient.getAccount(accounts.treasuryA);
     let decodedTreasuryAccount = AccountLayout.decode(treasuryAccount?.data);
-    expect(Number(decodedTreasuryAccount.amount)).toBe(depositAmount);
+    expect(Number(decodedTreasuryAccount.amount)).toBe(
+      depositAmount + userDeposits[0]
+    );
   });
 });

@@ -28,12 +28,12 @@ impl Bookkeeping {
         self.last_slot = current_slot;
 
         if volume_a == 0 || volume_b == 0 {
-            self.no_trade_slots += 1;
+            self.no_trade_slots += slot_diff;
             return;
         }
 
         // TODO: handle overflow
-        self.a_per_b += volume_a / volume_b;
-        self.b_per_a += volume_b / volume_a;
+        self.a_per_b += volume_a / volume_b * slot_diff;
+        self.b_per_a += volume_b / volume_a * slot_diff;
     }
 }

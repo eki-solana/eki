@@ -67,6 +67,10 @@ impl<'info> DepositTokenA<'info> {
     ) -> Result<()> {
         msg!("Creating position...");
 
+        if amount < MINIMUM_DEPOSIT_AMOUNT {
+            return Err(CustomErrorCode::DepositTooSmall.into());
+        }
+
         let start_slot: u64;
         let current_slot = Clock::get().unwrap().slot;
         if current_slot < self.market.start_slot {
@@ -96,6 +100,7 @@ impl<'info> DepositTokenA<'info> {
         if current_slot <= self.market.start_slot {
             self.position_a.bookkeeping = 0; // This case can be removed as bookkeeping is already 0
         } else {
+            // important to set it before updating bookkeeping account
             self.position_a.bookkeeping = self.bookkeeping.b_per_a;
         }
 
@@ -120,18 +125,23 @@ impl<'info> DepositTokenA<'info> {
     }
 
     pub fn update_market(&mut self) -> Result<()> {
+        let old_volume_a = self.market.token_a_volume;
+
+        // update market account
         self.market.token_a_volume += self.position_a.get_volume();
 
         let current_slot = Clock::get().unwrap().slot;
-        if current_slot < self.market.start_slot {
+        if current_slot <= self.market.start_slot {
             return Ok(());
         }
 
-        self.bookkeeping.update(
-            self.market.token_a_volume,
-            self.market.token_b_volume,
-            current_slot,
-        );
+        // update bookkeeping account to current state before trade
+        self.bookkeeping
+            .update(old_volume_a, self.market.token_b_volume, current_slot);
+
+        // store bookkeeping and no_trade_slots in position
+        self.position_a.bookkeeping = self.bookkeeping.b_per_a;
+        self.position_a.no_trade_slots = self.bookkeeping.no_trade_slots;
 
         Ok(())
     }

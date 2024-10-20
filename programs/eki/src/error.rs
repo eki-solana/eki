@@ -10,4 +10,7 @@ pub enum CustomErrorCode {
 
     #[msg("Slot interval has to be power of 10")]
     InvalidSlotInterval,
+
+    #[msg("Deposit amount is too small")]
+    DepositTooSmall,
 }
