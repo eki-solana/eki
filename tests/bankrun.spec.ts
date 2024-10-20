@@ -356,6 +356,8 @@ describe("eki", () => {
     expect(endPositionSlot - startPositionSlot).toBeGreaterThan(
       endSlotInterval
     );
+    expect(positionAccount.bookkeeping.toNumber()).toStrictEqual(0);
+    expect(positionAccount.noTradeSlots.toNumber()).toStrictEqual(0);
     expect(startPositionSlot).toStrictEqual(marketAccount.startSlot.toNumber()); // start slot for position was before market start slot
     expect(endPositionSlot % 10).toStrictEqual(0);
     expect(positionAccount.bump).toStrictEqual(positionBump);

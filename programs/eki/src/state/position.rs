@@ -7,6 +7,7 @@ pub struct PositionA {
     pub start_slot: u64,
     pub end_slot: u64,
     pub bookkeeping: u64,
+    pub no_trade_slots: u64,
     pub bump: u8,
 }
 
@@ -19,6 +20,7 @@ impl PositionA {
             start_slot,
             end_slot,
             bookkeeping: 0,
+            no_trade_slots: 0,
             bump,
         }
     }
