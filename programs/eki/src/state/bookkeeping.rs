@@ -1,5 +1,7 @@
 use anchor_lang::prelude::*;
 
+use crate::PRECISION_FACTOR;
+
 #[account]
 #[derive(InitSpace)]
 pub struct Bookkeeping {
@@ -33,7 +35,7 @@ impl Bookkeeping {
         }
 
         // TODO: handle overflow
-        self.a_per_b += volume_a / volume_b * slot_diff;
-        self.b_per_a += volume_b / volume_a * slot_diff;
+        self.a_per_b += PRECISION_FACTOR * slot_diff * volume_a / volume_b;
+        self.b_per_a += PRECISION_FACTOR * slot_diff * volume_b / volume_a;
     }
 }

@@ -36,4 +36,13 @@ pub mod eki {
 
         ctx.accounts.update_market()
     }
+
+    pub fn deposit_token_b(ctx: Context<DepositTokenB>, amount: u64, duration: u64) -> Result<()> {
+        ctx.accounts
+            .initialize_position_account(&ctx.bumps, amount, duration)?;
+
+        ctx.accounts.transfer_tokens_to_treasury(amount)?;
+
+        ctx.accounts.update_market()
+    }
 }

@@ -10,3 +10,4 @@ pub const ANCHOR_DISCRIMINATOR: usize = 8;
 pub const MINIMUM_TRADE_DURATION_SECONDS: u64 = 10;
 pub const EXITS_LENGTH: usize = 640000;
 pub const MINIMUM_DEPOSIT_AMOUNT: u64 = 1000;
+pub const PRECISION_FACTOR: u64 = 1_000_000;
