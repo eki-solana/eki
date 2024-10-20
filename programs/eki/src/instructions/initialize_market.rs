@@ -89,6 +89,9 @@ impl<'info> InitializeMarket<'info> {
         self.bookkeeping
             .set_inner(Bookkeeping::new(start_slot, bumps.bookkeeping));
 
+        let mut exits = self.exits.load_mut()?;
+        exits.new();
+
         msg!("Market created starting at slot {}", start_slot);
         Ok(())
     }

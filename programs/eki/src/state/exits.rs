@@ -13,11 +13,9 @@ pub struct Exits {
 impl Exits {
     pub const SEED_PREFIX: &'static str = "exits";
 
-    pub fn new() -> Self {
-        Self {
-            token_a: [0; EXITS_LENGTH],
-            token_b: [0; EXITS_LENGTH],
-            pointer: 0,
-        }
+    pub fn new(&mut self) {
+        self.token_a = [0; EXITS_LENGTH];
+        self.token_b = [0; EXITS_LENGTH];
+        self.pointer = 0;
     }
 }
