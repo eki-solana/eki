@@ -53,6 +53,9 @@ pub struct DepositTokenA<'info> {
   )]
     pub bookkeeping: Box<Account<'info, Bookkeeping>>,
 
+    #[account(mut)]
+    pub exits: AccountLoader<'info, Exits>,
+
     pub token_program: Interface<'info, TokenInterface>,
     pub associated_token_program: Program<'info, AssociatedToken>,
     pub system_program: Program<'info, System>,
@@ -64,6 +67,7 @@ impl<'info> DepositTokenA<'info> {
         bumps: &DepositTokenABumps,
         amount: u64,
         mut end_slot: u64,
+        current_slot: u64,
     ) -> Result<()> {
         msg!("Creating position...");
 
@@ -72,7 +76,6 @@ impl<'info> DepositTokenA<'info> {
         }
 
         let start_slot: u64;
-        let current_slot = Clock::get().unwrap().slot;
         if current_slot < self.market.start_slot {
             start_slot = self.market.start_slot;
         } else {
@@ -116,13 +119,38 @@ impl<'info> DepositTokenA<'info> {
         )
     }
 
-    pub fn update_market(&mut self) -> Result<()> {
+    pub fn update_exits(&mut self, current_slot: u64) -> Result<()> {
+        let mut exits = self.exits.load_mut()?;
+
+        let exit_slot = self.position_a.end_slot;
+        let exit_amount = self.position_a.get_volume();
+
+        let position =
+            ((exit_slot - exits.start_slot) / self.market.end_slot_interval) % EXITS_LENGTH as u64;
+        exits.token_a[position as usize] += exit_amount;
+
+        if current_slot < self.market.start_slot {
+            return Ok(());
+        }
+
+        let old_pointer = exits.pointer;
+        let new_pointer = ((current_slot - exits.start_slot) / self.market.end_slot_interval)
+            % EXITS_LENGTH as u64;
+
+        // for loop from old_pointer to new pointer and update bookkeeping account
+        // self.bookkeeping.update();
+
+        exits.pointer = new_pointer;
+
+        Ok(())
+    }
+
+    pub fn update_market(&mut self, current_slot: u64) -> Result<()> {
         let old_volume_a = self.market.token_a_volume;
 
         // update market account
         self.market.token_a_volume += self.position_a.get_volume();
 
-        let current_slot = Clock::get().unwrap().slot;
         if current_slot <= self.market.start_slot {
             return Ok(());
         }
@@ -183,6 +211,9 @@ pub struct DepositTokenB<'info> {
       bump = bookkeeping.bump
   )]
     pub bookkeeping: Box<Account<'info, Bookkeeping>>,
+
+    #[account(mut)]
+    pub exits: AccountLoader<'info, Exits>,
 
     pub token_program: Interface<'info, TokenInterface>,
     pub associated_token_program: Program<'info, AssociatedToken>,
