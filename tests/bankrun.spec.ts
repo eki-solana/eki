@@ -26,10 +26,10 @@ import { createTransferWrapSolTx } from "./utils";
 const TOKEN_PROGRAM: typeof TOKEN_2022_PROGRAM_ID | typeof TOKEN_PROGRAM_ID =
   TOKEN_2022_PROGRAM_ID;
 
-const EXITS_ACCOUNT_SIZE = 10240024;
-
 const NUM_USERS = 10;
 
+const EXITS_LENGTH = 640000; // must be the same as in the program
+const EXITS_ACCOUNT_SIZE = 10240024; // check account size in program
 const BOOKKEEPING_PRECISION = 1_000_000; // must be the same as BOOKKEEPING_PRECISION in the program
 const VOLUME_PRECISION = 1_000_000; // must be the same as VOLUME_PRECISION in the program
 
@@ -262,6 +262,10 @@ describe("eki", () => {
     // Exits
     const exitsAccount = await program.account.exits.fetch(exits.publicKey);
     expect(exitsAccount.pointer.toNumber()).toStrictEqual(0);
+    expect(exitsAccount.startSlot.toNumber()).toStrictEqual(
+      Math.floor(startSlot / marketAccount.endSlotInterval.toNumber()) *
+        marketAccount.endSlotInterval.toNumber()
+    );
 
     // Treasury Account
     const treasuryAccountA = await banksClient.getAccount(accounts.treasuryA);
@@ -324,9 +328,10 @@ describe("eki", () => {
 
     // Market Account
     const marketAccount = await program.account.market.fetch(accounts.market);
+    const volume = Math.floor(userDeposits[userId] / (endSlot - startSlot));
     expect(
       Math.floor(marketAccount.tokenAVolume.toNumber() / VOLUME_PRECISION)
-    ).toStrictEqual(Math.floor(userDeposits[userId] / (endSlot - startSlot)));
+    ).toStrictEqual(volume);
 
     // Position Account
     const positionAccount = await program.account.positionA.fetch(
@@ -353,6 +358,14 @@ describe("eki", () => {
     expect(bookkeepingAccount.aPerB.toNumber()).toStrictEqual(0);
     expect(bookkeepingAccount.bPerA.toNumber()).toStrictEqual(0);
     expect(bookkeepingAccount.noTradeSlots.toNumber()).toStrictEqual(0);
+
+    // Exits
+    const exitsAccount = await program.account.exits.fetch(accounts.exits);
+    const pointer = (endPositionSlot - startSlot) / endSlotInterval;
+    expect(exitsAccount.pointer.toNumber()).toStrictEqual(0);
+    expect(
+      Math.floor(exitsAccount.tokenA[pointer].toNumber() / VOLUME_PRECISION)
+    ).toStrictEqual(volume);
 
     // Treasury Account
     let treasuryAccount = await banksClient.getAccount(accounts.treasuryA);
@@ -423,16 +436,15 @@ describe("eki", () => {
       allPositionsA[0]
     );
     const marketAccount = await program.account.market.fetch(accounts.market);
+    const volume = Math.floor(
+      userDeposits[0] /
+        (positionAccount0.endSlot.toNumber() -
+          positionAccount0.startSlot.toNumber()) +
+        depositAmount / (endSlot - positionAccount.startSlot.toNumber())
+    );
     expect(
       Math.floor(marketAccount.tokenAVolume.toNumber() / VOLUME_PRECISION)
-    ).toStrictEqual(
-      Math.floor(
-        userDeposits[0] /
-          (positionAccount0.endSlot.toNumber() -
-            positionAccount0.startSlot.toNumber()) +
-          depositAmount / (endSlot - positionAccount.startSlot.toNumber())
-      )
-    );
+    ).toStrictEqual(volume);
 
     // Bookkeeping Account
     const bookkeepingAccount = await program.account.bookkeeping.fetch(
@@ -441,6 +453,16 @@ describe("eki", () => {
     expect(bookkeepingAccount.aPerB.toNumber()).toStrictEqual(0);
     expect(bookkeepingAccount.bPerA.toNumber()).toStrictEqual(0);
     expect(bookkeepingAccount.noTradeSlots.toNumber()).toStrictEqual(jumpSlots);
+
+    // Exits
+    const exitsAccount = await program.account.exits.fetch(accounts.exits);
+    const pointer = (endPositionSlot - startSlot) / endSlotInterval;
+    expect(exitsAccount.pointer.toNumber()).toStrictEqual(
+      (startPositionSlot - exitsAccount.startSlot.toNumber()) / endSlotInterval
+    );
+    expect(
+      Math.floor(exitsAccount.tokenA[pointer].toNumber() / VOLUME_PRECISION)
+    ).toStrictEqual(volume); // because this and the previous position end at same time
 
     // Treasury Account
     let treasuryAccount = await banksClient.getAccount(accounts.treasuryA);
@@ -501,11 +523,10 @@ describe("eki", () => {
 
     // Market Account
     const marketAccount = await program.account.market.fetch(accounts.market);
+    const volume = Math.floor(depositAmount / (endSlot - Number(current_slot)));
     expect(
       Math.floor(marketAccount.tokenBVolume.toNumber() / VOLUME_PRECISION)
-    ).toStrictEqual(
-      Math.floor(depositAmount / (endSlot - Number(current_slot)))
-    );
+    ).toStrictEqual(volume);
 
     // Bookkeeping Account
     const bookkeepingAccount = await program.account.bookkeeping.fetch(
@@ -517,6 +538,17 @@ describe("eki", () => {
       Number(current_slot) - startSlot
     );
 
+    // // Exits
+    // If uncommented the following test case fail due to not found blockhash
+    // const exitsAccount = await program.account.exits.fetch(accounts.exits);
+    // const pointer = (endPositionSlot - startSlot) / endSlotInterval;
+    // expect(exitsAccount.pointer.toNumber()).toStrictEqual(
+    //   (startPositionSlot - exitsAccount.startSlot.toNumber()) / endSlotInterval
+    // );
+    // expect(
+    //   Math.floor(exitsAccount.tokenB[pointer].toNumber() / VOLUME_PRECISION)
+    // ).toStrictEqual(volume);
+
     // Treasury Account
     let treasuryAccount = await banksClient.getAccount(accounts.treasuryB);
     let decodedTreasuryAccount = AccountLayout.decode(treasuryAccount?.data);
@@ -527,7 +559,7 @@ describe("eki", () => {
     const userId = 3;
     const depositAmount = userDeposits[userId];
     const endSlot = startSlot + endSlotInterval * 3000;
-    const current_slot = await banksClient.getSlot();
+    const currentSlot = await banksClient.getSlot();
 
     const user = userKeypairs[userId];
 
@@ -575,9 +607,9 @@ describe("eki", () => {
     );
     expect(positionAccount.bookkeeping.toNumber()).toStrictEqual(0); // still no trade since deposits happened on same slot
     expect(positionAccount.noTradeSlots.toNumber()).toStrictEqual(
-      Number(current_slot) - startSlot
+      Number(currentSlot) - startSlot
     );
-    expect(startPositionSlot).toStrictEqual(Number(current_slot));
+    expect(startPositionSlot).toStrictEqual(Number(currentSlot));
     expect(endPositionSlot % endSlotInterval).toStrictEqual(0);
     expect(positionAccount.bump).toStrictEqual(positionBump);
 
@@ -589,19 +621,18 @@ describe("eki", () => {
       allPositionsA[1]
     );
     const marketAccount = await program.account.market.fetch(accounts.market);
+    const volume = Math.floor(
+      userDeposits[0] /
+        (positionAccount0.endSlot.toNumber() -
+          positionAccount0.startSlot.toNumber()) +
+        userDeposits[1] /
+          (positionAccount1.endSlot.toNumber() -
+            positionAccount1.startSlot.toNumber()) +
+        depositAmount / (endSlot - positionAccount.startSlot.toNumber())
+    );
     expect(
       Math.floor(marketAccount.tokenAVolume.toNumber() / VOLUME_PRECISION)
-    ).toStrictEqual(
-      Math.floor(
-        userDeposits[0] /
-          (positionAccount0.endSlot.toNumber() -
-            positionAccount0.startSlot.toNumber()) +
-          userDeposits[1] /
-            (positionAccount1.endSlot.toNumber() -
-              positionAccount1.startSlot.toNumber()) +
-          depositAmount / (endSlot - positionAccount.startSlot.toNumber())
-      )
-    );
+    ).toStrictEqual(volume);
 
     // Bookkeeping Account
     const bookkeepingAccount = await program.account.bookkeeping.fetch(
@@ -610,14 +641,28 @@ describe("eki", () => {
     expect(bookkeepingAccount.aPerB.toNumber()).toStrictEqual(0);
     expect(bookkeepingAccount.bPerA.toNumber()).toStrictEqual(0);
     expect(bookkeepingAccount.noTradeSlots.toNumber()).toStrictEqual(
-      Number(current_slot) - startSlot
+      Number(currentSlot) - startSlot
+    );
+
+    // Exits Account
+    const exitsAccount = await program.account.exits.fetch(accounts.exits);
+    const pointer = (endPositionSlot - startSlot) / endSlotInterval;
+    expect(exitsAccount.pointer.toNumber()).toStrictEqual(
+      (startPositionSlot - exitsAccount.startSlot.toNumber()) / endSlotInterval
+    );
+    expect(
+      Math.floor(exitsAccount.tokenA[pointer].toNumber() / VOLUME_PRECISION)
+    ).toStrictEqual(
+      Math.floor(
+        depositAmount / (endSlot - positionAccount.startSlot.toNumber())
+      )
     );
 
     // Treasury Account
     let treasuryAccount = await banksClient.getAccount(accounts.treasuryA);
     let decodedTreasuryAccount = AccountLayout.decode(treasuryAccount?.data);
     expect(Number(decodedTreasuryAccount.amount)).toBe(
-      depositAmount + userDeposits[0] + userDeposits[1]
+      Math.floor(depositAmount + userDeposits[0] + userDeposits[1])
     );
   });
 
@@ -763,6 +808,20 @@ describe("eki", () => {
     );
     expect(bookkeepingAccount.noTradeSlots.toNumber()).toStrictEqual(
       lastSlot - startSlot
+    );
+
+    // Exits Account
+    const exitsAccount = await program.account.exits.fetch(accounts.exits);
+    const pointer = (endPositionSlot - startSlot) / endSlotInterval;
+    expect(exitsAccount.pointer.toNumber()).toStrictEqual(
+      (startPositionSlot - exitsAccount.startSlot.toNumber()) / endSlotInterval
+    );
+    expect(
+      Math.floor(exitsAccount.tokenA[pointer].toNumber() / VOLUME_PRECISION)
+    ).toStrictEqual(
+      Math.floor(
+        depositAmount / (endSlot - positionAccount.startSlot.toNumber())
+      )
     );
 
     // Treasury Account
