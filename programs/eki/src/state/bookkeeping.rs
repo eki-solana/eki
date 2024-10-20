@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
 
-use crate::PRECISION_FACTOR;
+use crate::BOOKKEEPING_PRECISION_FACTOR;
 
 #[account]
 #[derive(InitSpace)]
@@ -35,7 +35,7 @@ impl Bookkeeping {
         }
 
         // TODO: handle overflow
-        self.a_per_b += PRECISION_FACTOR * slot_diff * volume_a / volume_b;
-        self.b_per_a += PRECISION_FACTOR * slot_diff * volume_b / volume_a;
+        self.a_per_b += BOOKKEEPING_PRECISION_FACTOR * volume_a / volume_b * slot_diff;
+        self.b_per_a += BOOKKEEPING_PRECISION_FACTOR * volume_b / volume_a * slot_diff;
     }
 }

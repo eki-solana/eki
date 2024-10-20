@@ -1,5 +1,7 @@
 use anchor_lang::prelude::*;
 
+use crate::VOLUME_PRECISION;
+
 #[account]
 #[derive(InitSpace)]
 pub struct PositionA {
@@ -26,7 +28,7 @@ impl PositionA {
     }
 
     pub fn get_volume(&self) -> u64 {
-        let volume = self.amount / (self.end_slot - self.start_slot); // no trading at end slot
+        let volume = VOLUME_PRECISION * self.amount / (self.end_slot - self.start_slot); // no trading at end slot
         volume
     }
 }
@@ -57,7 +59,7 @@ impl PositionB {
     }
 
     pub fn get_volume(&self) -> u64 {
-        let volume = self.amount / (self.end_slot - self.start_slot); // no trading at end slot
+        let volume = VOLUME_PRECISION * self.amount / (self.end_slot - self.start_slot); // no trading at end slot
         volume
     }
 }

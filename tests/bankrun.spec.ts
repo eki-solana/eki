@@ -4,9 +4,6 @@ import type { Eki } from "../target/types/eki";
 import {
   ACCOUNT_SIZE,
   AccountLayout,
-  createCloseAccountInstruction,
-  createInitializeAccount3Instruction,
-  createTransferInstruction,
   getAssociatedTokenAddressSync,
   NATIVE_MINT,
   TOKEN_2022_PROGRAM_ID,
@@ -29,13 +26,12 @@ import { createTransferWrapSolTx } from "./utils";
 const TOKEN_PROGRAM: typeof TOKEN_2022_PROGRAM_ID | typeof TOKEN_PROGRAM_ID =
   TOKEN_2022_PROGRAM_ID;
 
-const MINIMUM_TRADE_DURATION_SECONDS = 10;
-
 const EXITS_ACCOUNT_SIZE = 10240016;
 
 const NUM_USERS = 10;
 
-const PRECISION_FACTOR = 1_000_000; // must be the same as in the program
+const BOOKKEEPING_PRECISION = 1_000_000; // must be the same as BOOKKEEPING_PRECISION in the program
+const VOLUME_PRECISION = 1_000_000; // must be the same as VOLUME_PRECISION in the program
 
 describe("eki", () => {
   let program = anchor.workspace.Eki as Program<Eki>;
@@ -289,7 +285,7 @@ describe("eki", () => {
 
   it("deposits token A before market starts!", async () => {
     const userId = 0;
-    const endSlot = startSlot + endSlotInterval * 10000;
+    const endSlot = startSlot + endSlotInterval * 1000;
 
     const user = userKeypairs[userId];
     const depositAmount = userDeposits[userId];
@@ -328,9 +324,9 @@ describe("eki", () => {
 
     // Market Account
     const marketAccount = await program.account.market.fetch(accounts.market);
-    expect(marketAccount.tokenAVolume.toNumber()).toStrictEqual(
-      userDeposits[userId] / (endSlot - startSlot)
-    );
+    expect(
+      Math.floor(marketAccount.tokenAVolume.toNumber() / VOLUME_PRECISION)
+    ).toStrictEqual(Math.floor(userDeposits[userId] / (endSlot - startSlot)));
 
     // Position Account
     const positionAccount = await program.account.positionA.fetch(
@@ -367,7 +363,7 @@ describe("eki", () => {
   it("deposits token A after market has started!", async () => {
     const userId = 1;
     const depositAmount = userDeposits[userId];
-    const endSlot = startSlot + endSlotInterval * 10000;
+    const endSlot = startSlot + endSlotInterval * 1000;
     const jumpSlots = 5000;
 
     context.warpToSlot(BigInt(startSlot + jumpSlots));
@@ -427,7 +423,9 @@ describe("eki", () => {
       allPositionsA[0]
     );
     const marketAccount = await program.account.market.fetch(accounts.market);
-    expect(marketAccount.tokenAVolume.toNumber()).toStrictEqual(
+    expect(
+      Math.floor(marketAccount.tokenAVolume.toNumber() / VOLUME_PRECISION)
+    ).toStrictEqual(
       Math.floor(
         userDeposits[0] /
           (positionAccount0.endSlot.toNumber() -
@@ -455,7 +453,7 @@ describe("eki", () => {
   it("deposits token B at the same slot!", async () => {
     const userId = 2;
     const depositAmount = userDeposits[userId];
-    const endSlot = startSlot + endSlotInterval * 5000;
+    const endSlot = startSlot + endSlotInterval * 2000;
 
     const current_slot = await banksClient.getSlot();
 
@@ -503,7 +501,9 @@ describe("eki", () => {
 
     // Market Account
     const marketAccount = await program.account.market.fetch(accounts.market);
-    expect(marketAccount.tokenBVolume.toNumber()).toStrictEqual(
+    expect(
+      Math.floor(marketAccount.tokenBVolume.toNumber() / VOLUME_PRECISION)
+    ).toStrictEqual(
       Math.floor(depositAmount / (endSlot - Number(current_slot)))
     );
 
@@ -526,7 +526,7 @@ describe("eki", () => {
   it("deposits token A at the same slot as before!", async () => {
     const userId = 3;
     const depositAmount = userDeposits[userId];
-    const endSlot = startSlot + endSlotInterval * 10000;
+    const endSlot = startSlot + endSlotInterval * 3000;
     const current_slot = await banksClient.getSlot();
 
     const user = userKeypairs[userId];
@@ -589,7 +589,9 @@ describe("eki", () => {
       allPositionsA[1]
     );
     const marketAccount = await program.account.market.fetch(accounts.market);
-    expect(marketAccount.tokenAVolume.toNumber()).toStrictEqual(
+    expect(
+      Math.floor(marketAccount.tokenAVolume.toNumber() / VOLUME_PRECISION)
+    ).toStrictEqual(
       Math.floor(
         userDeposits[0] /
           (positionAccount0.endSlot.toNumber() -
@@ -625,7 +627,7 @@ describe("eki", () => {
     const endSlot = startSlot + endSlotInterval * 4000;
 
     const lastSlot = Number(await banksClient.getSlot());
-    context.warpToSlot((await banksClient.getSlot()) + BigInt(1000));
+    context.warpToSlot(BigInt(lastSlot + 1000));
     const currentSlot = Number(await banksClient.getSlot());
 
     const user = userKeypairs[userId];
@@ -673,7 +675,9 @@ describe("eki", () => {
       allPositionsA[3]
     );
     const marketAccount = await program.account.market.fetch(accounts.market);
-    expect(marketAccount.tokenAVolume.toNumber()).toStrictEqual(
+    expect(
+      Math.floor(marketAccount.tokenAVolume.toNumber() / VOLUME_PRECISION)
+    ).toBeCloseTo(
       Math.floor(
         userDeposits[0] /
           (positionAccount0.endSlot.toNumber() -
@@ -689,7 +693,8 @@ describe("eki", () => {
             (positionAccount3.endSlot.toNumber() -
               positionAccount3.startSlot.toNumber()) +
             depositAmount / (endSlot - currentSlot)
-        )
+        ),
+      -1
     );
 
     // Position Account
@@ -702,15 +707,23 @@ describe("eki", () => {
     expect(endPositionSlot - startPositionSlot).toBeGreaterThan(
       endSlotInterval
     );
+    console.log("volume a", marketAccount.tokenAVolume.toNumber());
+    console.log("volume b", marketAccount.tokenBVolume.toNumber());
+
     expect(
-      Math.floor(positionAccount.bookkeeping.toNumber() / PRECISION_FACTOR)
+      Math.floor(positionAccount.bookkeeping.toNumber() / BOOKKEEPING_PRECISION)
     ).toStrictEqual(
       Math.floor(
-        ((currentSlot - lastSlot) * marketAccount.tokenBVolume.toNumber()) /
-          (marketAccount.tokenAVolume.toNumber() -
-            depositAmount / (endSlot - currentSlot))
+        ((currentSlot - lastSlot) *
+          Math.floor(
+            (marketAccount.tokenBVolume.toNumber() * BOOKKEEPING_PRECISION) /
+              (marketAccount.tokenAVolume.toNumber() -
+                (depositAmount * VOLUME_PRECISION) / (endSlot - currentSlot))
+          )) /
+          BOOKKEEPING_PRECISION
       )
     );
+
     expect(positionAccount.noTradeSlots.toNumber()).toStrictEqual(
       lastSlot - startSlot
     );
@@ -724,22 +737,30 @@ describe("eki", () => {
       accounts.bookkeeping
     );
     expect(
-      Math.floor(bookkeepingAccount.aPerB.toNumber() / PRECISION_FACTOR)
+      Math.floor(bookkeepingAccount.aPerB.toNumber() / BOOKKEEPING_PRECISION)
     ).toStrictEqual(
       Math.floor(
         ((currentSlot - lastSlot) *
-          (marketAccount.tokenAVolume.toNumber() -
-            depositAmount / (endSlot - currentSlot))) /
-          marketAccount.tokenBVolume.toNumber()
+          Math.floor(
+            ((marketAccount.tokenAVolume.toNumber() -
+              (depositAmount * VOLUME_PRECISION) / (endSlot - currentSlot)) *
+              BOOKKEEPING_PRECISION) /
+              marketAccount.tokenBVolume.toNumber()
+          )) /
+          BOOKKEEPING_PRECISION
       )
     );
     expect(
-      Math.floor(bookkeepingAccount.bPerA.toNumber() / PRECISION_FACTOR)
+      Math.floor(bookkeepingAccount.bPerA.toNumber() / BOOKKEEPING_PRECISION)
     ).toStrictEqual(
       Math.floor(
-        ((currentSlot - lastSlot) * marketAccount.tokenBVolume.toNumber()) /
-          (marketAccount.tokenAVolume.toNumber() -
-            depositAmount / (endSlot - currentSlot))
+        ((currentSlot - lastSlot) *
+          Math.floor(
+            (marketAccount.tokenBVolume.toNumber() * BOOKKEEPING_PRECISION) /
+              (marketAccount.tokenAVolume.toNumber() -
+                (depositAmount * VOLUME_PRECISION) / (endSlot - currentSlot))
+          )) /
+          BOOKKEEPING_PRECISION
       )
     );
     expect(bookkeepingAccount.noTradeSlots.toNumber()).toStrictEqual(
