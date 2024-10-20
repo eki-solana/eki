@@ -94,7 +94,7 @@ impl<'info> DepositTokenA<'info> {
 
         // Less EQUAL is important
         if current_slot <= self.market.start_slot {
-            self.position_a.bookkeeping = 0;
+            self.position_a.bookkeeping = 0; // This case can be removed as bookkeeping is already 0
         } else {
             self.position_a.bookkeeping = self.bookkeeping.b_per_a;
         }
@@ -120,7 +120,7 @@ impl<'info> DepositTokenA<'info> {
     }
 
     pub fn update_market(&mut self) -> Result<()> {
-        self.market.token_a_volume += self.position_a.volume;
+        self.market.token_a_volume += self.position_a.get_volume();
 
         let current_slot = Clock::get().unwrap().slot;
         if current_slot < self.market.start_slot {

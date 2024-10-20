@@ -32,6 +32,7 @@ impl Bookkeeping {
             return;
         }
 
+        // TODO: handle overflow
         self.a_per_b += volume_a / volume_b;
         self.b_per_a += volume_b / volume_a;
     }

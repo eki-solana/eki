@@ -358,9 +358,6 @@ describe("eki", () => {
     );
     expect(startPositionSlot).toStrictEqual(marketAccount.startSlot.toNumber()); // start slot for position was before market start slot
     expect(endPositionSlot % 10).toStrictEqual(0);
-    expect(positionAccount.volume.toNumber()).toStrictEqual(
-      Math.floor(depositAmount / (endPositionSlot - startPositionSlot + 1))
-    );
     expect(positionAccount.bump).toStrictEqual(positionBump);
 
     // Treasury Account

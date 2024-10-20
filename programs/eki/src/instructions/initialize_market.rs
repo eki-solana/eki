@@ -64,13 +64,18 @@ impl<'info> InitializeMarket<'info> {
     pub fn initialize_market(
         &mut self,
         bumps: &InitializeMarketBumps,
-        start_slot: u64,
+        mut start_slot: u64,
         end_slot_interval: u64,
     ) -> Result<()> {
         msg!("Creating market...");
 
         if !is_power_of_ten(end_slot_interval) {
             return Err(CustomErrorCode::InvalidSlotInterval.into());
+        }
+
+        let current_slot = Clock::get().unwrap().slot;
+        if start_slot < current_slot {
+            start_slot = current_slot;
         }
 
         self.market.set_inner(Market::new(
