@@ -13,4 +13,7 @@ pub enum CustomErrorCode {
 
     #[msg("Deposit amount is too small")]
     DepositTooSmall,
+
+    #[msg("No tokens have been swapped yet")]
+    NoTokensSwapped,
 }

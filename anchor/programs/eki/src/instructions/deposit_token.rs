@@ -122,6 +122,7 @@ impl<'info> DepositTokenA<'info> {
     pub fn update_exits(&mut self, current_slot: u64) -> Result<()> {
         let mut exits = self.exits.load_mut()?;
 
+        // Store what volume is removed from market at which slot
         let exit_slot = self.position_a.end_slot;
         let exit_amount = self.position_a.get_volume();
 
@@ -133,6 +134,7 @@ impl<'info> DepositTokenA<'info> {
             return Ok(());
         }
 
+        // Update bookkeeping account up to most current slot that satisfies end_slot_interval
         let mut quotient =
             (current_slot - exits.start_slot) / self.market.end_slot_interval / EXITS_LENGTH as u64;
         let mut new_pointer = ((current_slot - exits.start_slot) / self.market.end_slot_interval)
@@ -154,7 +156,6 @@ impl<'info> DepositTokenA<'info> {
                 + exits.start_slot
                 + quotient * self.market.end_slot_interval * EXITS_LENGTH as u64;
 
-            // update bookkeeping account to current state before trade
             self.bookkeeping
                 .update(self.market.token_a_volume, self.market.token_b_volume, slot);
 

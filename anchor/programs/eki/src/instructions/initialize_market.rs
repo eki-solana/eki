@@ -19,7 +19,7 @@ pub struct InitializeMarket<'info> {
         init,
         payer = signer,
         space = ANCHOR_DISCRIMINATOR + Market::INIT_SPACE,
-        seeds = [Market::SEED_PREFIX.as_bytes()],
+        seeds = [Market::SEED_PREFIX.as_bytes()], // add id to seed maybe in the future
         bump
     )]
     pub market: Box<Account<'info, Market>>,
