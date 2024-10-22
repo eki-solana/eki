@@ -12,6 +12,9 @@ import {
   PublicKey,
   SystemProgram,
   Transaction,
+  TransactionInstruction,
+  TransactionMessage,
+  VersionedTransaction,
 } from "@solana/web3.js";
 import { makeKeypairs } from "@solana-developers/helpers";
 import { ProgramTestContext } from "solana-bankrun";
@@ -53,11 +56,38 @@ export const createTransferWrapSolTx = (
     ),
   ];
 
-  const blockhash = context.lastBlockhash;
-  const tx = new Transaction();
-  tx.recentBlockhash = blockhash;
-  tx.add(...ixs);
-  tx.sign(user, auxAccount);
+  const tx = buildTransaction({
+    context,
+    payer: user.publicKey,
+    signers: [user, auxAccount],
+    instructions: ixs,
+  });
 
   return tx;
 };
+
+export function buildTransaction({
+  context,
+  payer,
+  signers,
+  instructions,
+}: {
+  context: ProgramTestContext;
+  payer: PublicKey;
+  signers: Keypair[];
+  instructions: TransactionInstruction[];
+}): VersionedTransaction {
+  const blockhash = context.lastBlockhash;
+
+  const messageV0 = new TransactionMessage({
+    payerKey: payer,
+    recentBlockhash: blockhash,
+    instructions,
+  }).compileToV0Message();
+
+  const tx = new VersionedTransaction(messageV0);
+
+  signers.forEach((s) => tx.sign([s]));
+
+  return tx;
+}
