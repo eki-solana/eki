@@ -76,6 +76,9 @@ pub struct ClosePositionA<'info> {
     #[account(mut)]
     pub exits: AccountLoader<'info, Exits>,
 
+    #[account(mut)]
+    pub prices: AccountLoader<'info, Prices>,
+
     pub token_program: Interface<'info, TokenInterface>,
     pub associated_token_program: Program<'info, AssociatedToken>,
     pub system_program: Program<'info, System>,
@@ -84,6 +87,7 @@ pub struct ClosePositionA<'info> {
 impl<'info> ClosePositionA<'info> {
     pub fn update_exits(&mut self, current_slot: u64) -> Result<()> {
         let mut exits = self.exits.load_mut()?;
+        let mut prices = self.prices.load_mut()?;
 
         // Store what volume is not removed anymore from market at position end slot
         let exit_slot = self.position_a.end_slot;
@@ -121,6 +125,10 @@ impl<'info> ClosePositionA<'info> {
 
             self.market.token_a_volume -= exits.token_a[p as usize];
             self.market.token_b_volume -= exits.token_b[p as usize];
+
+            prices.a_per_b[p as usize] = self.bookkeeping.a_per_b;
+            prices.b_per_a[p as usize] = self.bookkeeping.b_per_a;
+            prices.no_trade_slots[p as usize] = self.bookkeeping.no_trade_slots;
         }
 
         Ok(())
@@ -138,8 +146,7 @@ impl<'info> ClosePositionA<'info> {
             self.market.token_b_volume,
             bookkeeping_slot,
         );
-        msg!("Bookkeeping b per a {}", self.bookkeeping.b_per_a);
-        msg!("Position bookkeeping {}", self.position_a.bookkeeping);
+
         let amount_b = self.position_a.get_volume() / VOLUME_PRECISION
             * (self.bookkeeping.b_per_a - self.position_a.bookkeeping)
             / BOOKKEEPING_PRECISION_FACTOR;
@@ -277,6 +284,9 @@ pub struct ClosePositionB<'info> {
     #[account(mut)]
     pub exits: AccountLoader<'info, Exits>,
 
+    #[account(mut)]
+    pub prices: AccountLoader<'info, Prices>,
+
     pub token_program: Interface<'info, TokenInterface>,
     pub associated_token_program: Program<'info, AssociatedToken>,
     pub system_program: Program<'info, System>,
@@ -285,6 +295,7 @@ pub struct ClosePositionB<'info> {
 impl<'info> ClosePositionB<'info> {
     pub fn update_exits(&mut self, current_slot: u64) -> Result<()> {
         let mut exits = self.exits.load_mut()?;
+        let mut prices = self.prices.load_mut()?;
 
         // Store what volume is not removed anymore from market at position end slot
         let exit_slot = self.position_b.end_slot;
@@ -322,6 +333,10 @@ impl<'info> ClosePositionB<'info> {
 
             self.market.token_a_volume -= exits.token_a[p as usize];
             self.market.token_b_volume -= exits.token_b[p as usize];
+
+            prices.a_per_b[p as usize] = self.bookkeeping.a_per_b;
+            prices.b_per_a[p as usize] = self.bookkeeping.b_per_a;
+            prices.no_trade_slots[p as usize] = self.bookkeeping.no_trade_slots;
         }
 
         Ok(())

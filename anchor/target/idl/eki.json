@@ -290,6 +290,10 @@
           "writable": true
         },
         {
+          "name": "prices",
+          "writable": true
+        },
+        {
           "name": "token_program"
         },
         {
@@ -790,6 +794,10 @@
           "writable": true
         },
         {
+          "name": "prices",
+          "writable": true
+        },
+        {
           "name": "token_program"
         },
         {
@@ -1000,6 +1008,10 @@
         },
         {
           "name": "exits",
+          "writable": true
+        },
+        {
+          "name": "prices",
           "writable": true
         },
         {
@@ -1845,7 +1857,7 @@
             "type": {
               "array": [
                 "u64",
-                640000
+                420000
               ]
             }
           },
@@ -1854,7 +1866,7 @@
             "type": {
               "array": [
                 "u64",
-                640000
+                420000
               ]
             }
           },

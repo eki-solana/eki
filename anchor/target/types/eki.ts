@@ -296,6 +296,10 @@ export type Eki = {
           "writable": true
         },
         {
+          "name": "prices",
+          "writable": true
+        },
+        {
           "name": "tokenProgram"
         },
         {
@@ -796,6 +800,10 @@ export type Eki = {
           "writable": true
         },
         {
+          "name": "prices",
+          "writable": true
+        },
+        {
           "name": "tokenProgram"
         },
         {
@@ -1006,6 +1014,10 @@ export type Eki = {
         },
         {
           "name": "exits",
+          "writable": true
+        },
+        {
+          "name": "prices",
           "writable": true
         },
         {
@@ -1851,7 +1863,7 @@ export type Eki = {
             "type": {
               "array": [
                 "u64",
-                640000
+                420000
               ]
             }
           },
@@ -1860,7 +1872,7 @@ export type Eki = {
             "type": {
               "array": [
                 "u64",
-                640000
+                420000
               ]
             }
           },
