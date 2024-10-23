@@ -993,5 +993,38 @@ describe("eki", () => {
     let decodedTreasuryAccount = AccountLayout.decode(treasuryAccount?.data);
     // Need a way to calculate exact value
     expect(Number(decodedTreasuryAccount.amount)).toStrictEqual(118980858558);
+
+    ////////////////////////// Other token withdrawal
+
+    userId = 4;
+
+    const [positionA] = PublicKey.findProgramAddressSync(
+      [
+        Buffer.from("position_a"),
+        accounts.market.toBuffer(),
+        userKeypairs[userId].publicKey.toBuffer(),
+      ],
+      program.programId
+    );
+
+    accounts.positionA = positionA;
+    accounts.withdrawerTokenAccount = usdcAtas[userId];
+
+    await program.methods
+      .withdrawSwappedTokenB()
+      .accounts({
+        ...accounts,
+        withdrawer: userKeypairs[userId].publicKey,
+        // depositorTokenAccount: atas[0],
+        // positionA: position,
+      })
+      .signers([userKeypairs[userId]])
+      .rpc({ skipPreflight: true });
+
+    // Treasury Account
+    treasuryAccount = await banksClient.getAccount(accounts.treasuryB);
+    decodedTreasuryAccount = AccountLayout.decode(treasuryAccount?.data);
+    // Need a way to calculate exact value
+    expect(Number(decodedTreasuryAccount.amount)).toStrictEqual(29965928956);
   });
 });
