@@ -1054,6 +1054,10 @@ export type Eki = {
           "writable": true
         },
         {
+          "name": "prices",
+          "writable": true
+        },
+        {
           "name": "systemProgram",
           "address": "11111111111111111111111111111111"
         }
@@ -1184,6 +1188,10 @@ export type Eki = {
               }
             ]
           }
+        },
+        {
+          "name": "prices",
+          "writable": true
         },
         {
           "name": "exits",
@@ -1758,6 +1766,19 @@ export type Eki = {
         253,
         67
       ]
+    },
+    {
+      "name": "prices",
+      "discriminator": [
+        74,
+        25,
+        25,
+        70,
+        56,
+        98,
+        39,
+        21
+      ]
     }
   ],
   "errors": [
@@ -1964,6 +1985,45 @@ export type Eki = {
           {
             "name": "bump",
             "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "prices",
+      "serialization": "bytemuck",
+      "repr": {
+        "kind": "c"
+      },
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "aPerB",
+            "type": {
+              "array": [
+                "u64",
+                420000
+              ]
+            }
+          },
+          {
+            "name": "bPerA",
+            "type": {
+              "array": [
+                "u64",
+                420000
+              ]
+            }
+          },
+          {
+            "name": "noTradeSlots",
+            "type": {
+              "array": [
+                "u64",
+                420000
+              ]
+            }
           }
         ]
       }

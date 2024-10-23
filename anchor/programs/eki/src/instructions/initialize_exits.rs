@@ -13,6 +13,11 @@ pub struct InitializeExits<'info> {
     #[account(mut)]
     /// CHECK: We will perform checks in other instructions
     pub exits: UncheckedAccount<'info>,
+
+    #[account(mut)]
+    /// CHECK: We will perform checks in other instructions
+    pub prices: UncheckedAccount<'info>,
+
     pub system_program: Program<'info, System>,
 }
 
@@ -33,6 +38,25 @@ impl<'info> InitializeExits<'info> {
         data[..8].copy_from_slice(&discriminator[..8]);
 
         msg!("Exits account initialized!");
+        Ok(())
+    }
+
+    pub fn initialize_prices(&mut self) -> Result<()> {
+        msg!("Initializing prices account...");
+
+        if self.prices.data_len() < ANCHOR_DISCRIMINATOR + Prices::INIT_SPACE {
+            return Err(CustomErrorCode::AccountTooSmall.into());
+        }
+
+        let discriminator_preimage = b"account:Prices";
+        let mut hasher = Sha256::new();
+        hasher.update(discriminator_preimage);
+        let discriminator = hasher.finalize();
+
+        let mut data = self.prices.data.borrow_mut();
+        data[..8].copy_from_slice(&discriminator[..8]);
+
+        msg!("Prices account initialized!");
         Ok(())
     }
 }

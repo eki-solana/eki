@@ -1048,6 +1048,10 @@
           "writable": true
         },
         {
+          "name": "prices",
+          "writable": true
+        },
+        {
           "name": "system_program",
           "address": "11111111111111111111111111111111"
         }
@@ -1178,6 +1182,10 @@
               }
             ]
           }
+        },
+        {
+          "name": "prices",
+          "writable": true
         },
         {
           "name": "exits",
@@ -1752,6 +1760,19 @@
         253,
         67
       ]
+    },
+    {
+      "name": "Prices",
+      "discriminator": [
+        74,
+        25,
+        25,
+        70,
+        56,
+        98,
+        39,
+        21
+      ]
     }
   ],
   "errors": [
@@ -1958,6 +1979,45 @@
           {
             "name": "bump",
             "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Prices",
+      "serialization": "bytemuck",
+      "repr": {
+        "kind": "c"
+      },
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "a_per_b",
+            "type": {
+              "array": [
+                "u64",
+                420000
+              ]
+            }
+          },
+          {
+            "name": "b_per_a",
+            "type": {
+              "array": [
+                "u64",
+                420000
+              ]
+            }
+          },
+          {
+            "name": "no_trade_slots",
+            "type": {
+              "array": [
+                "u64",
+                420000
+              ]
+            }
           }
         ]
       }

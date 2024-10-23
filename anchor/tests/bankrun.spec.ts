@@ -29,7 +29,8 @@ const TOKEN_PROGRAM: typeof TOKEN_2022_PROGRAM_ID | typeof TOKEN_PROGRAM_ID =
 const NUM_USERS = 10;
 
 const EXITS_LENGTH = 640000; // must be the same as in the program
-const EXITS_ACCOUNT_SIZE = 10240024; // check account size in program
+const EXITS_ACCOUNT_SIZE = 10240024; // check account size in program (+Discriminator size)
+const PRICES_ACCOUNT_SIZE = 10080008; // check account size in program (+Discriminator size)
 const BOOKKEEPING_PRECISION = 1_000_000; // must be the same as BOOKKEEPING_PRECISION in the program
 const VOLUME_PRECISION = 1_000_000; // must be the same as VOLUME_PRECISION in the program
 
@@ -108,7 +109,7 @@ describe("eki", () => {
           return {
             address: user.publicKey,
             info: {
-              lamports: 1000 * LAMPORTS_PER_SOL,
+              lamports: 10000 * LAMPORTS_PER_SOL,
               data: Buffer.alloc(0),
               owner: SYSTEM_PROGRAM_ID,
               executable: false,
@@ -234,6 +235,7 @@ describe("eki", () => {
     );
 
     const exits = makeKeypairs(1)[0];
+    const prices = makeKeypairs(1)[0];
 
     const createExitsAccountIx = SystemProgram.createAccount({
       fromPubkey: userKeypairs[0].publicKey,
@@ -246,11 +248,23 @@ describe("eki", () => {
       programId: program.programId,
     });
 
+    const createPricesAccountIx = SystemProgram.createAccount({
+      fromPubkey: userKeypairs[0].publicKey,
+      newAccountPubkey: prices.publicKey,
+      space: PRICES_ACCOUNT_SIZE,
+      // lamports: await getMinimumBalanceForRentExemptAccount(
+      //   provider.connection
+      // ),
+      lamports: 100 * LAMPORTS_PER_SOL,
+      programId: program.programId,
+    });
+
     let blockhash = context.lastBlockhash;
     const createExitsAccountTx = new Transaction();
     createExitsAccountTx.recentBlockhash = blockhash;
     createExitsAccountTx.add(createExitsAccountIx);
-    createExitsAccountTx.sign(userKeypairs[0], exits);
+    createExitsAccountTx.add(createPricesAccountIx);
+    createExitsAccountTx.sign(userKeypairs[0], exits, prices);
     await banksClient.processTransaction(createExitsAccountTx);
 
     accounts.market = market;
@@ -258,6 +272,7 @@ describe("eki", () => {
     accounts.treasuryB = treasuryB;
     accounts.bookkeeping = bookkeeping;
     accounts.exits = exits.publicKey;
+    accounts.prices = prices.publicKey;
 
     const ixs = [
       await program.methods
@@ -1130,7 +1145,18 @@ describe("eki", () => {
   it("closes all remaining position after they ended", async () => {
     let userAIds = [1, 3, 4];
 
-    context.warpToSlot(BigInt(20000));
+    for (let j = 1; j <= 4; j++) {
+      context.warpToSlot(BigInt(j * 10000 + 10000));
+
+      await program.methods
+        .updateBookkeeping()
+        .accounts({
+          ...accounts,
+          signer: userKeypairs[9].publicKey,
+        })
+        .signers([userKeypairs[9]])
+        .rpc({ skipPreflight: true });
+    }
 
     for (let i = 0; i < userAIds.length; i++) {
       const [positionA] = PublicKey.findProgramAddressSync(

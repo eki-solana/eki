@@ -16,7 +16,9 @@ pub mod eki {
     use super::*;
 
     pub fn initialize_exits(ctx: Context<InitializeExits>) -> Result<()> {
-        ctx.accounts.initialize_exits()
+        ctx.accounts.initialize_exits()?;
+
+        ctx.accounts.initialize_prices()
     }
 
     pub fn initialize_market(

@@ -54,6 +54,9 @@ pub struct InitializeMarket<'info> {
     pub bookkeeping: Box<Account<'info, Bookkeeping>>,
 
     #[account(mut)]
+    pub prices: AccountLoader<'info, Prices>,
+
+    #[account(mut)]
     pub exits: AccountLoader<'info, Exits>,
 
     pub token_program: Interface<'info, TokenInterface>,
@@ -93,6 +96,9 @@ impl<'info> InitializeMarket<'info> {
         let mut exits_start_slot = start_slot / end_slot_interval;
         exits_start_slot *= end_slot_interval;
         exits.new(exits_start_slot);
+
+        let mut prices = self.prices.load_mut()?;
+        prices.new();
 
         msg!("Market created starting at slot {}", start_slot);
         Ok(())
