@@ -11,7 +11,6 @@ pub struct PositionA {
     pub bookkeeping: u64,
     pub no_trade_slots: u64,
     pub total_no_trades: u64,
-    pub withdraw_slot: u64,
     pub bump: u8,
 }
 
@@ -26,7 +25,6 @@ impl PositionA {
             bookkeeping: 0,
             no_trade_slots: 0,
             total_no_trades: 0,
-            withdraw_slot: start_slot,
             bump,
         }
     }
@@ -46,7 +44,6 @@ pub struct PositionB {
     pub bookkeeping: u64,
     pub no_trade_slots: u64,
     pub total_no_trades: u64,
-    pub withdraw_slot: u64,
     pub bump: u8,
 }
 
@@ -61,7 +58,6 @@ impl PositionB {
             bookkeeping: 0,
             no_trade_slots: 0,
             total_no_trades: 0,
-            withdraw_slot: start_slot,
             bump,
         }
     }

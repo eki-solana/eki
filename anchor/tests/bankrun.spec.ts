@@ -391,9 +391,6 @@ describe("eki", () => {
     expect(positionAccount.noTradeSlots.toNumber()).toStrictEqual(0);
     expect(startPositionSlot).toStrictEqual(marketAccount.startSlot.toNumber()); // start slot for position was before market start slot
     expect(endPositionSlot % endSlotInterval).toStrictEqual(0);
-    expect(positionAccount.withdrawSlot.toNumber()).toStrictEqual(
-      startPositionSlot
-    );
     expect(positionAccount.totalNoTrades.toNumber()).toStrictEqual(0);
     expect(positionAccount.bump).toStrictEqual(positionBump);
 
@@ -475,9 +472,6 @@ describe("eki", () => {
     expect(positionAccount.noTradeSlots.toNumber()).toStrictEqual(jumpSlots);
     expect(startPositionSlot).toStrictEqual(startSlot + jumpSlots);
     expect(endPositionSlot % endSlotInterval).toStrictEqual(0);
-    expect(positionAccount.withdrawSlot.toNumber()).toStrictEqual(
-      startPositionSlot
-    );
     expect(positionAccount.totalNoTrades.toNumber()).toStrictEqual(0);
     expect(positionAccount.bump).toStrictEqual(positionBump);
 
@@ -569,9 +563,6 @@ describe("eki", () => {
     );
     expect(startPositionSlot).toStrictEqual(Number(current_slot));
     expect(endPositionSlot % endSlotInterval).toStrictEqual(0);
-    expect(positionAccount.withdrawSlot.toNumber()).toStrictEqual(
-      startPositionSlot
-    );
     expect(positionAccount.totalNoTrades.toNumber()).toStrictEqual(0);
     expect(positionAccount.bump).toStrictEqual(positionBump);
 
@@ -665,9 +656,6 @@ describe("eki", () => {
     );
     expect(startPositionSlot).toStrictEqual(Number(currentSlot));
     expect(endPositionSlot % endSlotInterval).toStrictEqual(0);
-    expect(positionAccount.withdrawSlot.toNumber()).toStrictEqual(
-      startPositionSlot
-    );
     expect(positionAccount.totalNoTrades.toNumber()).toStrictEqual(0);
     expect(positionAccount.bump).toStrictEqual(positionBump);
 
@@ -831,9 +819,6 @@ describe("eki", () => {
     expect(startPositionSlot).toStrictEqual(currentSlot);
     expect(endPositionSlot).toStrictEqual(endSlot);
     expect(endPositionSlot % endSlotInterval).toStrictEqual(0);
-    expect(positionAccount.withdrawSlot.toNumber()).toStrictEqual(
-      startPositionSlot
-    );
     expect(positionAccount.totalNoTrades.toNumber()).toStrictEqual(0);
     expect(positionAccount.bump).toStrictEqual(positionBump);
 
@@ -984,7 +969,6 @@ describe("eki", () => {
     );
     const startPositionSlot = positionAccount.startSlot.toNumber();
     const endPositionSlot = positionAccount.endSlot.toNumber();
-    expect(positionAccount.withdrawSlot.toNumber()).toStrictEqual(currentSlot);
 
     // need to be calculated with variables
     expect(positionAccount.noTradeSlots.toNumber()).toStrictEqual(5000);

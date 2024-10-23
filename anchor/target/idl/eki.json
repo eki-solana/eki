@@ -1048,10 +1048,6 @@
             "type": "u64"
           },
           {
-            "name": "withdraw_slot",
-            "type": "u64"
-          },
-          {
             "name": "bump",
             "type": "u8"
           }
@@ -1085,10 +1081,6 @@
           },
           {
             "name": "total_no_trades",
-            "type": "u64"
-          },
-          {
-            "name": "withdraw_slot",
             "type": "u64"
           },
           {

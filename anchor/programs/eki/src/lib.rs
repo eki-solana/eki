@@ -61,4 +61,12 @@ pub mod eki {
 
         ctx.accounts.withdraw_swapped_tokens(current_slot)
     }
+
+    pub fn withdraw_swapped_token_b(ctx: Context<WithdrawSwappedTokensB>) -> Result<()> {
+        let current_slot = Clock::get().unwrap().slot;
+
+        ctx.accounts.update_exits(current_slot)?;
+
+        ctx.accounts.withdraw_swapped_tokens(current_slot)
+    }
 }

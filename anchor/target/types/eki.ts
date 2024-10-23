@@ -1054,10 +1054,6 @@ export type Eki = {
             "type": "u64"
           },
           {
-            "name": "withdrawSlot",
-            "type": "u64"
-          },
-          {
             "name": "bump",
             "type": "u8"
           }
@@ -1091,10 +1087,6 @@ export type Eki = {
           },
           {
             "name": "totalNoTrades",
-            "type": "u64"
-          },
-          {
-            "name": "withdrawSlot",
             "type": "u64"
           },
           {
