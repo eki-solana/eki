@@ -56,6 +56,9 @@ pub struct DepositTokenA<'info> {
     #[account(mut)]
     pub exits: AccountLoader<'info, Exits>,
 
+    #[account(mut)]
+    pub prices: AccountLoader<'info, Prices>,
+
     pub token_program: Interface<'info, TokenInterface>,
     pub associated_token_program: Program<'info, AssociatedToken>,
     pub system_program: Program<'info, System>,
@@ -71,7 +74,7 @@ impl<'info> DepositTokenA<'info> {
     ) -> Result<()> {
         msg!("Creating position...");
 
-        if amount < MINIMUM_DEPOSIT_AMOUNT {
+        if amount < MINIMUM_DEPOSIT_AMOUNT * u64::pow(10, self.token_mint_a.decimals as u32) {
             return Err(CustomErrorCode::DepositTooSmall.into());
         }
 
@@ -121,6 +124,7 @@ impl<'info> DepositTokenA<'info> {
 
     pub fn update_exits(&mut self, current_slot: u64) -> Result<()> {
         let mut exits = self.exits.load_mut()?;
+        let mut prices = self.prices.load_mut()?;
 
         // Store what volume is removed from market at which slot
         let exit_slot = self.position_a.end_slot;
@@ -161,6 +165,10 @@ impl<'info> DepositTokenA<'info> {
 
             self.market.token_a_volume -= exits.token_a[p as usize];
             self.market.token_b_volume -= exits.token_b[p as usize];
+
+            prices.a_per_b[p as usize] = self.bookkeeping.a_per_b;
+            prices.b_per_a[p as usize] = self.bookkeeping.b_per_a;
+            prices.no_trade_slots[p as usize] = self.bookkeeping.no_trade_slots;
         }
 
         Ok(())
@@ -236,6 +244,9 @@ pub struct DepositTokenB<'info> {
     #[account(mut)]
     pub exits: AccountLoader<'info, Exits>,
 
+    #[account(mut)]
+    pub prices: AccountLoader<'info, Prices>,
+
     pub token_program: Interface<'info, TokenInterface>,
     pub associated_token_program: Program<'info, AssociatedToken>,
     pub system_program: Program<'info, System>,
@@ -251,7 +262,7 @@ impl<'info> DepositTokenB<'info> {
     ) -> Result<()> {
         msg!("Creating position...");
 
-        if amount < MINIMUM_DEPOSIT_AMOUNT {
+        if amount < MINIMUM_DEPOSIT_AMOUNT * u64::pow(10, self.token_mint_b.decimals as u32) {
             return Err(CustomErrorCode::DepositTooSmall.into());
         }
 
@@ -301,6 +312,7 @@ impl<'info> DepositTokenB<'info> {
 
     pub fn update_exits(&mut self, current_slot: u64) -> Result<()> {
         let mut exits = self.exits.load_mut()?;
+        let mut prices = self.prices.load_mut()?;
 
         let exit_slot = self.position_b.end_slot;
         let exit_amount = self.position_b.get_volume();
@@ -340,6 +352,10 @@ impl<'info> DepositTokenB<'info> {
 
             self.market.token_a_volume -= exits.token_a[p as usize];
             self.market.token_b_volume -= exits.token_b[p as usize];
+
+            prices.a_per_b[p as usize] = self.bookkeeping.a_per_b;
+            prices.b_per_a[p as usize] = self.bookkeeping.b_per_a;
+            prices.no_trade_slots[p as usize] = self.bookkeeping.no_trade_slots;
         }
 
         Ok(())
