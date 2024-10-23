@@ -596,6 +596,10 @@ export type Eki = {
           "writable": true
         },
         {
+          "name": "prices",
+          "writable": true
+        },
+        {
           "name": "tokenProgram"
         },
         {
@@ -1298,6 +1302,10 @@ export type Eki = {
           "writable": true
         },
         {
+          "name": "prices",
+          "writable": true
+        },
+        {
           "name": "systemProgram",
           "address": "11111111111111111111111111111111"
         }
@@ -1492,6 +1500,10 @@ export type Eki = {
         },
         {
           "name": "exits",
+          "writable": true
+        },
+        {
+          "name": "prices",
           "writable": true
         },
         {
@@ -1696,6 +1708,10 @@ export type Eki = {
         },
         {
           "name": "exits",
+          "writable": true
+        },
+        {
+          "name": "prices",
           "writable": true
         },
         {

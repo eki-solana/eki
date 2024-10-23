@@ -56,6 +56,9 @@ pub struct WithdrawSwappedTokensA<'info> {
     #[account(mut)]
     pub exits: AccountLoader<'info, Exits>,
 
+    #[account(mut)]
+    pub prices: AccountLoader<'info, Prices>,
+
     pub token_program: Interface<'info, TokenInterface>,
     pub associated_token_program: Program<'info, AssociatedToken>,
     pub system_program: Program<'info, System>,
@@ -64,6 +67,7 @@ pub struct WithdrawSwappedTokensA<'info> {
 impl<'info> WithdrawSwappedTokensA<'info> {
     pub fn update_exits(&mut self, current_slot: u64) -> Result<()> {
         let mut exits = self.exits.load_mut()?;
+        let mut prices = self.prices.load_mut()?;
 
         if current_slot <= self.market.start_slot {
             return Err(CustomErrorCode::NoTokensSwapped.into());
@@ -96,6 +100,10 @@ impl<'info> WithdrawSwappedTokensA<'info> {
 
             self.market.token_a_volume -= exits.token_a[p as usize];
             self.market.token_b_volume -= exits.token_b[p as usize];
+
+            prices.a_per_b[p as usize] = self.bookkeeping.a_per_b;
+            prices.b_per_a[p as usize] = self.bookkeeping.b_per_a;
+            prices.no_trade_slots[p as usize] = self.bookkeeping.no_trade_slots;
         }
 
         Ok(())
@@ -198,6 +206,9 @@ pub struct WithdrawSwappedTokensB<'info> {
     #[account(mut)]
     pub exits: AccountLoader<'info, Exits>,
 
+    #[account(mut)]
+    pub prices: AccountLoader<'info, Prices>,
+
     pub token_program: Interface<'info, TokenInterface>,
     pub associated_token_program: Program<'info, AssociatedToken>,
     pub system_program: Program<'info, System>,
@@ -206,6 +217,7 @@ pub struct WithdrawSwappedTokensB<'info> {
 impl<'info> WithdrawSwappedTokensB<'info> {
     pub fn update_exits(&mut self, current_slot: u64) -> Result<()> {
         let mut exits = self.exits.load_mut()?;
+        let mut prices = self.prices.load_mut()?;
 
         if current_slot <= self.market.start_slot {
             return Err(CustomErrorCode::NoTokensSwapped.into());
@@ -238,6 +250,10 @@ impl<'info> WithdrawSwappedTokensB<'info> {
 
             self.market.token_a_volume -= exits.token_a[p as usize];
             self.market.token_b_volume -= exits.token_b[p as usize];
+
+            prices.a_per_b[p as usize] = self.bookkeeping.a_per_b;
+            prices.b_per_a[p as usize] = self.bookkeeping.b_per_a;
+            prices.no_trade_slots[p as usize] = self.bookkeeping.no_trade_slots;
         }
 
         Ok(())

@@ -590,6 +590,10 @@
           "writable": true
         },
         {
+          "name": "prices",
+          "writable": true
+        },
+        {
           "name": "token_program"
         },
         {
@@ -1292,6 +1296,10 @@
           "writable": true
         },
         {
+          "name": "prices",
+          "writable": true
+        },
+        {
           "name": "system_program",
           "address": "11111111111111111111111111111111"
         }
@@ -1486,6 +1494,10 @@
         },
         {
           "name": "exits",
+          "writable": true
+        },
+        {
+          "name": "prices",
           "writable": true
         },
         {
@@ -1690,6 +1702,10 @@
         },
         {
           "name": "exits",
+          "writable": true
+        },
+        {
+          "name": "prices",
           "writable": true
         },
         {

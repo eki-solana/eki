@@ -24,12 +24,16 @@ pub struct UpdateBookkeeping<'info> {
     #[account(mut)]
     pub exits: AccountLoader<'info, Exits>,
 
+    #[account(mut)]
+    pub prices: AccountLoader<'info, Prices>,
+
     pub system_program: Program<'info, System>,
 }
 
 impl<'info> UpdateBookkeeping<'info> {
     pub fn update_exits(&mut self) -> Result<()> {
         let mut exits = self.exits.load_mut()?;
+        let mut prices = self.prices.load_mut()?;
 
         let current_slot = Clock::get().unwrap().slot;
 
@@ -64,6 +68,10 @@ impl<'info> UpdateBookkeeping<'info> {
 
             self.market.token_a_volume -= exits.token_a[p as usize];
             self.market.token_b_volume -= exits.token_b[p as usize];
+
+            prices.a_per_b[p as usize] = self.bookkeeping.a_per_b;
+            prices.b_per_a[p as usize] = self.bookkeeping.b_per_a;
+            prices.no_trade_slots[p as usize] = self.bookkeeping.no_trade_slots;
         }
 
         Ok(())
