@@ -69,4 +69,24 @@ pub mod eki {
 
         ctx.accounts.withdraw_swapped_tokens(current_slot)
     }
+
+    pub fn close_position_a(ctx: Context<ClosePositionA>) -> Result<()> {
+        let current_slot = Clock::get().unwrap().slot;
+
+        ctx.accounts.update_exits(current_slot)?;
+
+        ctx.accounts.withdraw_tokens(current_slot)?;
+
+        ctx.accounts.update_market()
+    }
+
+    pub fn close_position_b(ctx: Context<ClosePositionB>) -> Result<()> {
+        let current_slot = Clock::get().unwrap().slot;
+
+        ctx.accounts.update_exits(current_slot)?;
+
+        ctx.accounts.withdraw_tokens(current_slot)?;
+
+        ctx.accounts.update_market()
+    }
 }
