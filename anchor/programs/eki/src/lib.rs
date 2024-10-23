@@ -89,4 +89,8 @@ pub mod eki {
 
         ctx.accounts.update_market()
     }
+
+    pub fn update_bookkeeping(ctx: Context<UpdateBookkeeping>) -> Result<()> {
+        ctx.accounts.update_exits()
+    }
 }

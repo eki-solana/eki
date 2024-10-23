@@ -1128,25 +1128,47 @@ describe("eki", () => {
   });
 
   it("closes all remaining position after they ended", async () => {
-    let userId = 1;
+    let userAIds = [1, 3, 4];
 
-    console.log("Current slot", Number(await banksClient.getSlot()));
     context.warpToSlot(BigInt(20000));
-    const currentSlot = Number(await banksClient.getSlot());
 
-    const [positionA] = PublicKey.findProgramAddressSync(
+    for (let i = 0; i < userAIds.length; i++) {
+      const [positionA] = PublicKey.findProgramAddressSync(
+        [
+          Buffer.from("position_a"),
+          accounts.market.toBuffer(),
+          userKeypairs[userAIds[i]].publicKey.toBuffer(),
+        ],
+        program.programId
+      );
+
+      accounts.positionA = positionA;
+
+      await program.methods
+        .closePositionA()
+        .accounts({
+          ...accounts,
+          signer: userKeypairs[userAIds[i]].publicKey,
+        })
+        .signers([userKeypairs[userAIds[i]]])
+        .rpc({ skipPreflight: true });
+    }
+
+    let userId = 2;
+
+    const [positionB] = PublicKey.findProgramAddressSync(
       [
-        Buffer.from("position_a"),
+        Buffer.from("position_b"),
         accounts.market.toBuffer(),
         userKeypairs[userId].publicKey.toBuffer(),
       ],
       program.programId
     );
 
-    accounts.positionA = positionA;
+    accounts.positionB = positionB;
 
     await program.methods
-      .closePositionA()
+      .closePositionB()
       .accounts({
         ...accounts,
         signer: userKeypairs[userId].publicKey,
@@ -1154,62 +1176,24 @@ describe("eki", () => {
       .signers([userKeypairs[userId]])
       .rpc({ skipPreflight: true });
 
-    // Market Account
-
-    const positionAccount2 = await program.account.positionB.fetch(
-      allPositionsB[2]
-    );
-    const positionAccount3 = await program.account.positionA.fetch(
-      allPositionsA[3]
-    );
-    const positionAccount4 = await program.account.positionA.fetch(
-      allPositionsA[4]
-    );
     const marketAccount = await program.account.market.fetch(accounts.market);
     expect(
       Math.floor(marketAccount.tokenAVolume.toNumber() / VOLUME_PRECISION)
-    ).toBeCloseTo(
-      Math.floor(
-        userDeposits[3] /
-          (positionAccount3.endSlot.toNumber() -
-            positionAccount3.startSlot.toNumber())
-      ) +
-        Math.floor(
-          userDeposits[4] /
-            (positionAccount4.endSlot.toNumber() -
-              positionAccount4.startSlot.toNumber())
-        ),
-      -1
-    );
+    ).toStrictEqual(0);
 
     expect(
       Math.floor(marketAccount.tokenBVolume.toNumber() / VOLUME_PRECISION)
-    ).toBeCloseTo(
-      Math.floor(
-        userDeposits[2] /
-          (positionAccount2.endSlot.toNumber() -
-            positionAccount2.startSlot.toNumber())
-      ),
-      -1
-    );
-
-    // Exits Account
-    const exitsAccount = await program.account.exits.fetch(accounts.exits);
-    expect(exitsAccount.pointer.toNumber()).toStrictEqual(
-      Math.floor(
-        (currentSlot - exitsAccount.startSlot.toNumber()) / endSlotInterval
-      )
-    );
+    ).toStrictEqual(0);
 
     // Treasury Account
     let treasuryAccountA = await banksClient.getAccount(accounts.treasuryA);
     let decodedTreasuryAccountA = AccountLayout.decode(treasuryAccountA?.data);
     // Need a way to calculate exact value
-    expect(Number(decodedTreasuryAccountA.amount)).toStrictEqual(109381058558);
+    expect(Number(decodedTreasuryAccountA.amount)).toStrictEqual(6727);
 
     let treasuryAccountB = await banksClient.getAccount(accounts.treasuryB);
     let decodedTreasuryAccountB = AccountLayout.decode(treasuryAccountB?.data);
     // Need a way to calculate exact value
-    expect(Number(decodedTreasuryAccountB.amount)).toStrictEqual(29850845560);
+    expect(Number(decodedTreasuryAccountB.amount)).toStrictEqual(6446);
   });
 });

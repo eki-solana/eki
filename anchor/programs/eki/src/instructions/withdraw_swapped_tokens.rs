@@ -261,7 +261,7 @@ impl<'info> WithdrawSwappedTokensB<'info> {
             * (self.bookkeeping.b_per_a - self.position_a.bookkeeping)
             / BOOKKEEPING_PRECISION_FACTOR;
 
-        self.position_a.bookkeeping = self.bookkeeping.a_per_b;
+        self.position_a.bookkeeping = self.bookkeeping.b_per_a;
 
         self.position_a.total_no_trades +=
             self.bookkeeping.no_trade_slots - self.position_a.no_trade_slots;

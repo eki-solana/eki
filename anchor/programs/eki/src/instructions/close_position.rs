@@ -138,6 +138,8 @@ impl<'info> ClosePositionA<'info> {
             self.market.token_b_volume,
             bookkeeping_slot,
         );
+        msg!("Bookkeeping b per a {}", self.bookkeeping.b_per_a);
+        msg!("Position bookkeeping {}", self.position_a.bookkeeping);
         let amount_b = self.position_a.get_volume() / VOLUME_PRECISION
             * (self.bookkeeping.b_per_a - self.position_a.bookkeeping)
             / BOOKKEEPING_PRECISION_FACTOR;
