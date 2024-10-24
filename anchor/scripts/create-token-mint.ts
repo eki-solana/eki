@@ -23,16 +23,24 @@ process.env.ANCHOR_WALLET = idWallet;
 
   const payer = loadKeypairFromFile(idWallet);
 
-  const mintKeypair = Keypair.generate();
+  const mintKeypairUSDC = Keypair.generate();
+  const mintKeypairSOL = Keypair.generate();
 
-  const tokenConfig = {
+  const tokenConfigUSDC = {
     decimals: 6,
-    name: "Fake USDC",
-    symbol: "USDC",
+    name: "USDC",
+    symbol: "tUSDC",
     uri: "https://thisisnot.arealurl/info.json",
   };
 
-  const mint = await createMint(
+  const tokenConfigSOL = {
+    decimals: 9,
+    name: "SOL",
+    symbol: "tSOL",
+    uri: "https://thisisnot.arealurl/info.json",
+  };
+
+  const mintUSDC = await createMint(
     provider.connection,
     payer,
     // mint authority
@@ -40,12 +48,22 @@ process.env.ANCHOR_WALLET = idWallet;
     // freeze authority
     payer.publicKey,
     // decimals - use any number you desire
-    tokenConfig.decimals,
+    tokenConfigUSDC.decimals,
     // manually define our token mint address
-    mintKeypair
+    mintKeypairUSDC
   );
 
-  console.log("Token's mint address:", mint.toBase58());
+  const mintSOL = await createMint(
+    provider.connection,
+    payer,
+    payer.publicKey,
+    payer.publicKey,
+    tokenConfigUSDC.decimals,
+    mintKeypairSOL
+  );
+
+  console.log("SOL's mint address:", mintSOL.toBase58());
+  console.log("USDC's mint address:", mintUSDC.toBase58());
 })()
   .then(() => console.log("Market initialized!"))
   .catch((e) => console.log(e));

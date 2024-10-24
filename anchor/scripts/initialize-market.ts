@@ -18,11 +18,15 @@ import { idWallet, loadKeypairFromFile } from "./helpers";
 process.env.ANCHOR_PROVIDER_URL = "http://127.0.0.1:8899";
 process.env.ANCHOR_WALLET = idWallet;
 
-const EXITS_ACCOUNT_SIZE = 10240024; // check account size in program
+const EXITS_ACCOUNT_SIZE = 6720024; // check account size in program
+const PRICES_ACCOUNT_SIZE = 10080008; // check account size in program
 
 // Original USCD mint address
 // const USDC_MINT = new PublicKey("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v");
-const USDC_MINT = new PublicKey("8ib59DoKUq7GiwQfZUmwvaS7WuoCAMx1wrCYkcdEmpxV");
+
+// Need to first run create mint script and insert the mint addresses here
+const SOL_MINT = new PublicKey("AqmaM131N6Aa54pKLtbxHmx687zqjVx7jECo5EQyaxff");
+const USDC_MINT = new PublicKey("UzGwQdU8u9ogEeBYkTL8T3aypNeNm26NcqpKYcAbgZy");
 
 (async () => {
   const provider = anchor.AnchorProvider.env();
@@ -51,6 +55,7 @@ const USDC_MINT = new PublicKey("8ib59DoKUq7GiwQfZUmwvaS7WuoCAMx1wrCYkcdEmpxV");
   );
 
   const exits = Keypair.generate();
+  const prices = Keypair.generate();
 
   const createExitsAccountIx = SystemProgram.createAccount({
     fromPubkey: payer.publicKey,
@@ -62,17 +67,28 @@ const USDC_MINT = new PublicKey("8ib59DoKUq7GiwQfZUmwvaS7WuoCAMx1wrCYkcdEmpxV");
       ),
     programId: program.programId,
   });
+
+  const createPricesAccountIx = SystemProgram.createAccount({
+    fromPubkey: payer.publicKey,
+    newAccountPubkey: prices.publicKey,
+    space: PRICES_ACCOUNT_SIZE,
+    lamports:
+      await provider.connection.getMinimumBalanceForRentExemption(
+        PRICES_ACCOUNT_SIZE
+      ),
+    programId: program.programId,
+  });
   let blockhash = await provider.connection.getLatestBlockhash();
 
   let messageV0 = new TransactionMessage({
     payerKey: payer.publicKey,
     recentBlockhash: blockhash.blockhash,
-    instructions: [createExitsAccountIx],
+    instructions: [createExitsAccountIx, createPricesAccountIx],
   }).compileToV0Message();
 
   const createExitsTx = new VersionedTransaction(messageV0);
 
-  createExitsTx.sign([payer, exits]);
+  createExitsTx.sign([payer, exits, prices]);
   const createExitsTxId =
     await provider.connection.sendTransaction(createExitsTx);
   console.log(
@@ -85,16 +101,17 @@ const USDC_MINT = new PublicKey("8ib59DoKUq7GiwQfZUmwvaS7WuoCAMx1wrCYkcdEmpxV");
 
   const accounts: Record<string, PublicKey> = {
     tokenProgram: TOKEN_PROGRAM_ID,
-    tokenMintA: NATIVE_MINT,
+    tokenMintA: SOL_MINT,
     tokenMintB: USDC_MINT,
     market: market,
     treasuryA: treasuryA,
     treasuryB: treasuryB,
     bookkeeping: bookkeeping,
     exits: exits.publicKey,
+    prices: prices.publicKey,
   };
 
-  let startSlot = (await provider.connection.getSlot()) + 60 * 60 * 24 * 2.5;
+  let startSlot = (await provider.connection.getSlot()) + 60 * 60 * 2.5;
 
   const ixs = [
     await program.methods
