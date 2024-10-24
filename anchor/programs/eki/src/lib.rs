@@ -79,7 +79,7 @@ pub mod eki {
 
         ctx.accounts.withdraw_tokens(current_slot)?;
 
-        ctx.accounts.update_market()
+        ctx.accounts.update_market(current_slot)
     }
 
     pub fn close_position_b(ctx: Context<ClosePositionB>) -> Result<()> {
@@ -89,7 +89,7 @@ pub mod eki {
 
         ctx.accounts.withdraw_tokens(current_slot)?;
 
-        ctx.accounts.update_market()
+        ctx.accounts.update_market(current_slot)
     }
 
     pub fn update_bookkeeping(ctx: Context<UpdateBookkeeping>) -> Result<()> {

@@ -12,7 +12,7 @@ pub struct UpdateBookkeeping<'info> {
       seeds = [Market::SEED_PREFIX.as_bytes()],
       bump = market.bump
     )]
-    pub market: Account<'info, Market>,
+    pub market: Box<Account<'info, Market>>,
 
     #[account(
       mut,

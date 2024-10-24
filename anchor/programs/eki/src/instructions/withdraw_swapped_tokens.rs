@@ -20,9 +20,9 @@ pub struct WithdrawSwappedTokensA<'info> {
       associated_token::authority = withdrawer,
       associated_token::token_program = token_program
     )]
-    pub withdrawer_token_account: InterfaceAccount<'info, TokenAccount>,
+    pub withdrawer_token_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
-    pub token_mint_a: InterfaceAccount<'info, Mint>,
+    pub token_mint_a: Box<InterfaceAccount<'info, Mint>>,
 
     #[account(
       mut,
@@ -30,21 +30,21 @@ pub struct WithdrawSwappedTokensA<'info> {
       seeds = [Market::SEED_PREFIX.as_bytes()],
       bump = market.bump
     )]
-    pub market: Account<'info, Market>,
+    pub market: Box<Account<'info, Market>>,
 
     #[account(
       mut,
       seeds = [PositionB::SEED_PREFIX.as_bytes(), market.key().as_ref(), withdrawer.key().as_ref()],
       bump = position_b.bump
     )]
-    pub position_b: Account<'info, PositionB>,
+    pub position_b: Box<Account<'info, PositionB>>,
 
     #[account(
       mut,
       seeds = [TREASURY_A_SEED.as_bytes(), market.key().as_ref()],
       bump
     )]
-    pub treasury_a: InterfaceAccount<'info, TokenAccount>,
+    pub treasury_a: Box<InterfaceAccount<'info, TokenAccount>>,
 
     #[account(
       mut,
@@ -170,9 +170,9 @@ pub struct WithdrawSwappedTokensB<'info> {
       associated_token::authority = withdrawer,
       associated_token::token_program = token_program
     )]
-    pub withdrawer_token_account: InterfaceAccount<'info, TokenAccount>,
+    pub withdrawer_token_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
-    pub token_mint_b: InterfaceAccount<'info, Mint>,
+    pub token_mint_b: Box<InterfaceAccount<'info, Mint>>,
 
     #[account(
       mut,
@@ -180,21 +180,21 @@ pub struct WithdrawSwappedTokensB<'info> {
       seeds = [Market::SEED_PREFIX.as_bytes()],
       bump = market.bump
     )]
-    pub market: Account<'info, Market>,
+    pub market: Box<Account<'info, Market>>,
 
     #[account(
       mut,
       seeds = [PositionA::SEED_PREFIX.as_bytes(), market.key().as_ref(), withdrawer.key().as_ref()],
       bump = position_a.bump
     )]
-    pub position_a: Account<'info, PositionA>,
+    pub position_a: Box<Account<'info, PositionA>>,
 
     #[account(
       mut,
       seeds = [TREASURY_B_SEED.as_bytes(), market.key().as_ref()],
       bump
     )]
-    pub treasury_b: InterfaceAccount<'info, TokenAccount>,
+    pub treasury_b: Box<InterfaceAccount<'info, TokenAccount>>,
 
     #[account(
       mut,

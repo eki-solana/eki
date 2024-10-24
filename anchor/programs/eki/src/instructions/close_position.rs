@@ -18,7 +18,7 @@ pub struct ClosePositionA<'info> {
       associated_token::authority = signer,
       associated_token::token_program = token_program
     )]
-    pub signer_token_account_a: InterfaceAccount<'info, TokenAccount>,
+    pub signer_token_account_a: Box<InterfaceAccount<'info, TokenAccount>>,
 
     #[account(
       init_if_needed,
@@ -27,13 +27,13 @@ pub struct ClosePositionA<'info> {
       associated_token::authority = signer,
       associated_token::token_program = token_program
     )]
-    pub signer_token_account_b: InterfaceAccount<'info, TokenAccount>,
+    pub signer_token_account_b: Box<InterfaceAccount<'info, TokenAccount>>,
 
     #[account(mut)]
-    pub token_mint_a: InterfaceAccount<'info, Mint>,
+    pub token_mint_a: Box<InterfaceAccount<'info, Mint>>,
 
     #[account(mut)]
-    pub token_mint_b: InterfaceAccount<'info, Mint>,
+    pub token_mint_b: Box<InterfaceAccount<'info, Mint>>,
 
     #[account(
       mut,
@@ -57,14 +57,14 @@ pub struct ClosePositionA<'info> {
       seeds = [TREASURY_A_SEED.as_bytes(), market.key().as_ref()],
       bump
     )]
-    pub treasury_a: InterfaceAccount<'info, TokenAccount>,
+    pub treasury_a: Box<InterfaceAccount<'info, TokenAccount>>,
 
     #[account(
       mut,
       seeds = [TREASURY_B_SEED.as_bytes(), market.key().as_ref()],
       bump
     )]
-    pub treasury_b: InterfaceAccount<'info, TokenAccount>,
+    pub treasury_b: Box<InterfaceAccount<'info, TokenAccount>>,
 
     #[account(
       mut,
@@ -135,81 +135,118 @@ impl<'info> ClosePositionA<'info> {
     }
 
     pub fn withdraw_tokens(&mut self, current_slot: u64) -> Result<()> {
-        let bookkeeping_slot;
         if current_slot < self.position_a.end_slot {
-            bookkeeping_slot = current_slot;
+            self.bookkeeping.update(
+                self.market.token_a_volume,
+                self.market.token_b_volume,
+                current_slot,
+            );
+
+            let amount_b = self.position_a.get_volume() / VOLUME_PRECISION
+                * (self.bookkeeping.b_per_a - self.position_a.bookkeeping)
+                / BOOKKEEPING_PRECISION_FACTOR;
+
+            self.position_a.total_no_trades +=
+                self.bookkeeping.no_trade_slots - self.position_a.no_trade_slots;
+
+            let seeds = &[Market::SEED_PREFIX.as_bytes(), &[self.market.bump]];
+            let signer_seeds = [&seeds[..]];
+
+            let accounts = TransferChecked {
+                from: self.treasury_b.to_account_info(),
+                to: self.signer_token_account_b.to_account_info(),
+                mint: self.token_mint_b.to_account_info(),
+                authority: self.market.to_account_info(),
+            };
+
+            let cpi_context = CpiContext::new_with_signer(
+                self.token_program.to_account_info(),
+                accounts,
+                &signer_seeds,
+            );
+
+            transfer_checked(cpi_context, amount_b, self.token_mint_b.decimals)?;
+
+            // Transfer remaining deposit
+            let amount_a = (self.position_a.end_slot - current_slot
+                + self.position_a.total_no_trades)
+                * self.position_a.get_volume()
+                / VOLUME_PRECISION;
+
+            let accounts = TransferChecked {
+                from: self.treasury_a.to_account_info(),
+                to: self.signer_token_account_a.to_account_info(),
+                mint: self.token_mint_a.to_account_info(),
+                authority: self.market.to_account_info(),
+            };
+
+            let cpi_context = CpiContext::new_with_signer(
+                self.token_program.to_account_info(),
+                accounts,
+                &signer_seeds,
+            );
+
+            transfer_checked(cpi_context, amount_a, self.token_mint_a.decimals)?;
         } else {
-            bookkeeping_slot = self.position_a.end_slot
+            let exits = self.exits.load_mut()?;
+            let prices = self.prices.load_mut()?;
+
+            let pointer = ((self.position_a.end_slot - exits.start_slot)
+                / self.market.end_slot_interval)
+                % EXITS_LENGTH as u64;
+
+            let amount_b = self.position_a.get_volume() / VOLUME_PRECISION
+                * (prices.b_per_a[pointer as usize] - self.position_a.bookkeeping)
+                / BOOKKEEPING_PRECISION_FACTOR;
+
+            self.position_a.total_no_trades +=
+                prices.no_trade_slots[pointer as usize] - self.position_a.no_trade_slots;
+
+            let seeds = &[Market::SEED_PREFIX.as_bytes(), &[self.market.bump]];
+            let signer_seeds = [&seeds[..]];
+
+            let accounts = TransferChecked {
+                from: self.treasury_b.to_account_info(),
+                to: self.signer_token_account_b.to_account_info(),
+                mint: self.token_mint_b.to_account_info(),
+                authority: self.market.to_account_info(),
+            };
+
+            let cpi_context = CpiContext::new_with_signer(
+                self.token_program.to_account_info(),
+                accounts,
+                &signer_seeds,
+            );
+
+            transfer_checked(cpi_context, amount_b, self.token_mint_b.decimals)?;
+
+            // Transfer remaining deposit
+            let amount_a =
+                self.position_a.total_no_trades * self.position_a.get_volume() / VOLUME_PRECISION;
+
+            let accounts = TransferChecked {
+                from: self.treasury_a.to_account_info(),
+                to: self.signer_token_account_a.to_account_info(),
+                mint: self.token_mint_a.to_account_info(),
+                authority: self.market.to_account_info(),
+            };
+
+            let cpi_context = CpiContext::new_with_signer(
+                self.token_program.to_account_info(),
+                accounts,
+                &signer_seeds,
+            );
+
+            transfer_checked(cpi_context, amount_a, self.token_mint_a.decimals)?;
         }
-        self.bookkeeping.update(
-            self.market.token_a_volume,
-            self.market.token_b_volume,
-            bookkeeping_slot,
-        );
 
-        let amount_b = self.position_a.get_volume() / VOLUME_PRECISION
-            * (self.bookkeeping.b_per_a - self.position_a.bookkeeping)
-            / BOOKKEEPING_PRECISION_FACTOR;
-
-        self.position_a.bookkeeping = self.bookkeeping.b_per_a;
-
-        self.position_a.total_no_trades +=
-            self.bookkeeping.no_trade_slots - self.position_a.no_trade_slots;
-
-        self.position_a.no_trade_slots = self.bookkeeping.no_trade_slots;
-
-        let seeds = &[Market::SEED_PREFIX.as_bytes(), &[self.market.bump]];
-        let signer_seeds = [&seeds[..]];
-
-        let accounts = TransferChecked {
-            from: self.treasury_b.to_account_info(),
-            to: self.signer_token_account_b.to_account_info(),
-            mint: self.token_mint_b.to_account_info(),
-            authority: self.market.to_account_info(),
-        };
-
-        let cpi_context = CpiContext::new_with_signer(
-            self.token_program.to_account_info(),
-            accounts,
-            &signer_seeds,
-        );
-
-        msg!(
-            "Withdrawing {} tokens b",
-            amount_b / u64::pow(10, self.token_mint_b.decimals as u32),
-        );
-
-        transfer_checked(cpi_context, amount_b, self.token_mint_b.decimals)?;
-
-        // Transfer remaining deposit
-        let amount_a = (self.position_a.end_slot - bookkeeping_slot
-            + self.position_a.total_no_trades)
-            * self.position_a.get_volume()
-            / VOLUME_PRECISION;
-
-        let accounts = TransferChecked {
-            from: self.treasury_a.to_account_info(),
-            to: self.signer_token_account_a.to_account_info(),
-            mint: self.token_mint_a.to_account_info(),
-            authority: self.market.to_account_info(),
-        };
-
-        let cpi_context = CpiContext::new_with_signer(
-            self.token_program.to_account_info(),
-            accounts,
-            &signer_seeds,
-        );
-
-        msg!(
-            "Withdrawing {} tokens a",
-            amount_a / u64::pow(10, self.token_mint_a.decimals as u32),
-        );
-        transfer_checked(cpi_context, amount_a, self.token_mint_a.decimals)
+        Ok(())
     }
 
-    pub fn update_market(&mut self) -> Result<()> {
-        // update market account
-        self.market.token_a_volume -= self.position_a.get_volume();
+    pub fn update_market(&mut self, current_slot: u64) -> Result<()> {
+        if current_slot < self.position_a.end_slot {
+            self.market.token_a_volume -= self.position_a.get_volume();
+        }
 
         Ok(())
     }
@@ -227,7 +264,7 @@ pub struct ClosePositionB<'info> {
       associated_token::authority = signer,
       associated_token::token_program = token_program
     )]
-    pub signer_token_account_a: InterfaceAccount<'info, TokenAccount>,
+    pub signer_token_account_a: Box<InterfaceAccount<'info, TokenAccount>>,
 
     #[account(
       mut,
@@ -235,13 +272,13 @@ pub struct ClosePositionB<'info> {
       associated_token::authority = signer,
       associated_token::token_program = token_program
     )]
-    pub signer_token_account_b: InterfaceAccount<'info, TokenAccount>,
+    pub signer_token_account_b: Box<InterfaceAccount<'info, TokenAccount>>,
 
     #[account(mut)]
-    pub token_mint_a: InterfaceAccount<'info, Mint>,
+    pub token_mint_a: Box<InterfaceAccount<'info, Mint>>,
 
     #[account(mut)]
-    pub token_mint_b: InterfaceAccount<'info, Mint>,
+    pub token_mint_b: Box<InterfaceAccount<'info, Mint>>,
 
     #[account(
       mut,
@@ -265,14 +302,14 @@ pub struct ClosePositionB<'info> {
       seeds = [TREASURY_A_SEED.as_bytes(), market.key().as_ref()],
       bump
     )]
-    pub treasury_a: InterfaceAccount<'info, TokenAccount>,
+    pub treasury_a: Box<InterfaceAccount<'info, TokenAccount>>,
 
     #[account(
       mut,
       seeds = [TREASURY_B_SEED.as_bytes(), market.key().as_ref()],
       bump
     )]
-    pub treasury_b: InterfaceAccount<'info, TokenAccount>,
+    pub treasury_b: Box<InterfaceAccount<'info, TokenAccount>>,
 
     #[account(
       mut,
@@ -343,81 +380,122 @@ impl<'info> ClosePositionB<'info> {
     }
 
     pub fn withdraw_tokens(&mut self, current_slot: u64) -> Result<()> {
-        let bookkeeping_slot;
         if current_slot < self.position_b.end_slot {
-            bookkeeping_slot = current_slot;
+            self.bookkeeping.update(
+                self.market.token_a_volume,
+                self.market.token_b_volume,
+                current_slot,
+            );
+
+            let amount_a = self.position_b.get_volume() / VOLUME_PRECISION
+                * (self.bookkeeping.a_per_b - self.position_b.bookkeeping)
+                / BOOKKEEPING_PRECISION_FACTOR;
+
+            self.position_b.bookkeeping = self.bookkeeping.a_per_b;
+
+            self.position_b.total_no_trades +=
+                self.bookkeeping.no_trade_slots - self.position_b.no_trade_slots;
+
+            self.position_b.no_trade_slots = self.bookkeeping.no_trade_slots;
+
+            let seeds = &[Market::SEED_PREFIX.as_bytes(), &[self.market.bump]];
+            let signer_seeds = [&seeds[..]];
+
+            let accounts = TransferChecked {
+                from: self.treasury_a.to_account_info(),
+                to: self.signer_token_account_a.to_account_info(),
+                mint: self.token_mint_a.to_account_info(),
+                authority: self.market.to_account_info(),
+            };
+
+            let cpi_context = CpiContext::new_with_signer(
+                self.token_program.to_account_info(),
+                accounts,
+                &signer_seeds,
+            );
+
+            transfer_checked(cpi_context, amount_a, self.token_mint_a.decimals)?;
+
+            // Transfer remaining deposit
+            let amount_b = (self.position_b.end_slot - current_slot
+                + self.position_b.total_no_trades) as u128
+                * self.position_b.get_volume() as u128
+                / VOLUME_PRECISION as u128;
+
+            let accounts = TransferChecked {
+                from: self.treasury_b.to_account_info(),
+                to: self.signer_token_account_b.to_account_info(),
+                mint: self.token_mint_b.to_account_info(),
+                authority: self.market.to_account_info(),
+            };
+
+            let cpi_context = CpiContext::new_with_signer(
+                self.token_program.to_account_info(),
+                accounts,
+                &signer_seeds,
+            );
+
+            transfer_checked(cpi_context, amount_b as u64, self.token_mint_b.decimals)?;
         } else {
-            bookkeeping_slot = self.position_b.end_slot
+            let exits = self.exits.load_mut()?;
+            let prices = self.prices.load_mut()?;
+
+            let pointer = ((self.position_b.end_slot - exits.start_slot)
+                / self.market.end_slot_interval)
+                % EXITS_LENGTH as u64;
+
+            let amount_a = self.position_b.get_volume() / VOLUME_PRECISION
+                * (prices.a_per_b[pointer as usize] - self.position_b.bookkeeping)
+                / BOOKKEEPING_PRECISION_FACTOR;
+
+            self.position_b.total_no_trades +=
+                prices.no_trade_slots[pointer as usize] - self.position_b.no_trade_slots;
+
+            let seeds = &[Market::SEED_PREFIX.as_bytes(), &[self.market.bump]];
+            let signer_seeds = [&seeds[..]];
+
+            let accounts = TransferChecked {
+                from: self.treasury_a.to_account_info(),
+                to: self.signer_token_account_a.to_account_info(),
+                mint: self.token_mint_a.to_account_info(),
+                authority: self.market.to_account_info(),
+            };
+
+            let cpi_context = CpiContext::new_with_signer(
+                self.token_program.to_account_info(),
+                accounts,
+                &signer_seeds,
+            );
+
+            transfer_checked(cpi_context, amount_a, self.token_mint_a.decimals)?;
+
+            // Transfer remaining deposit
+            let amount_b =
+                self.position_b.total_no_trades * self.position_b.get_volume() / VOLUME_PRECISION;
+
+            let accounts = TransferChecked {
+                from: self.treasury_b.to_account_info(),
+                to: self.signer_token_account_b.to_account_info(),
+                mint: self.token_mint_b.to_account_info(),
+                authority: self.market.to_account_info(),
+            };
+
+            let cpi_context = CpiContext::new_with_signer(
+                self.token_program.to_account_info(),
+                accounts,
+                &signer_seeds,
+            );
+
+            transfer_checked(cpi_context, amount_b, self.token_mint_b.decimals)?;
         }
-        self.bookkeeping.update(
-            self.market.token_a_volume,
-            self.market.token_b_volume,
-            bookkeeping_slot,
-        );
-        let amount_a = self.position_b.get_volume() / VOLUME_PRECISION
-            * (self.bookkeeping.a_per_b - self.position_b.bookkeeping)
-            / BOOKKEEPING_PRECISION_FACTOR;
 
-        self.position_b.bookkeeping = self.bookkeeping.a_per_b;
-
-        self.position_b.total_no_trades +=
-            self.bookkeeping.no_trade_slots - self.position_b.no_trade_slots;
-
-        self.position_b.no_trade_slots = self.bookkeeping.no_trade_slots;
-
-        let seeds = &[Market::SEED_PREFIX.as_bytes(), &[self.market.bump]];
-        let signer_seeds = [&seeds[..]];
-
-        let accounts = TransferChecked {
-            from: self.treasury_a.to_account_info(),
-            to: self.signer_token_account_a.to_account_info(),
-            mint: self.token_mint_a.to_account_info(),
-            authority: self.market.to_account_info(),
-        };
-
-        let cpi_context = CpiContext::new_with_signer(
-            self.token_program.to_account_info(),
-            accounts,
-            &signer_seeds,
-        );
-
-        msg!(
-            "Withdrawing {} tokens a",
-            amount_a / u64::pow(10, self.token_mint_a.decimals as u32),
-        );
-
-        transfer_checked(cpi_context, amount_a, self.token_mint_a.decimals)?;
-
-        // Transfer remaining deposit
-        let amount_b = (self.position_b.end_slot - bookkeeping_slot
-            + self.position_b.total_no_trades)
-            * self.position_b.get_volume()
-            / VOLUME_PRECISION;
-
-        let accounts = TransferChecked {
-            from: self.treasury_b.to_account_info(),
-            to: self.signer_token_account_b.to_account_info(),
-            mint: self.token_mint_b.to_account_info(),
-            authority: self.market.to_account_info(),
-        };
-
-        let cpi_context = CpiContext::new_with_signer(
-            self.token_program.to_account_info(),
-            accounts,
-            &signer_seeds,
-        );
-
-        msg!(
-            "Withdrawing {} tokens a",
-            amount_b / u64::pow(10, self.token_mint_b.decimals as u32),
-        );
-        transfer_checked(cpi_context, amount_b, self.token_mint_b.decimals)
+        Ok(())
     }
 
-    pub fn update_market(&mut self) -> Result<()> {
-        // update market account
-        self.market.token_b_volume -= self.position_b.get_volume();
-
+    pub fn update_market(&mut self, current_slot: u64) -> Result<()> {
+        if current_slot < self.position_b.end_slot {
+            self.market.token_b_volume -= self.position_b.get_volume();
+        }
         Ok(())
     }
 }

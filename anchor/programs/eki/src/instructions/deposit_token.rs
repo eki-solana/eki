@@ -19,9 +19,9 @@ pub struct DepositTokenA<'info> {
       associated_token::authority = depositor,
       associated_token::token_program = token_program
     )]
-    pub depositor_token_account: InterfaceAccount<'info, TokenAccount>,
+    pub depositor_token_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
-    pub token_mint_a: InterfaceAccount<'info, Mint>,
+    pub token_mint_a: Box<InterfaceAccount<'info, Mint>>,
 
     #[account(
       mut,
@@ -29,7 +29,7 @@ pub struct DepositTokenA<'info> {
       seeds = [Market::SEED_PREFIX.as_bytes()],
       bump = market.bump
     )]
-    pub market: Account<'info, Market>,
+    pub market: Box<Account<'info, Market>>,
 
     #[account(
       init,
@@ -38,13 +38,13 @@ pub struct DepositTokenA<'info> {
       space = ANCHOR_DISCRIMINATOR + PositionA::INIT_SPACE,
       bump
     )]
-    pub position_a: Account<'info, PositionA>,
+    pub position_a: Box<Account<'info, PositionA>>,
 
     #[account(
       mut,
       seeds = [TREASURY_A_SEED.as_bytes(), market.key().as_ref()], bump
     )]
-    pub treasury_a: InterfaceAccount<'info, TokenAccount>,
+    pub treasury_a: Box<InterfaceAccount<'info, TokenAccount>>,
 
     #[account(
       mut,
@@ -107,11 +107,6 @@ impl<'info> DepositTokenA<'info> {
     }
 
     pub fn transfer_tokens_to_treasury(&self, amount: u64) -> Result<()> {
-        msg!(
-            "Transferring {} tokens of mint {} to treasury",
-            amount / u64::pow(10, self.token_mint_a.decimals as u32),
-            &self.token_mint_a.key()
-        );
         transfer_tokens(
             &self.depositor_token_account,
             &self.treasury_a,
@@ -207,9 +202,9 @@ pub struct DepositTokenB<'info> {
       associated_token::authority = depositor,
       associated_token::token_program = token_program
     )]
-    pub depositor_token_account: InterfaceAccount<'info, TokenAccount>,
+    pub depositor_token_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
-    pub token_mint_b: InterfaceAccount<'info, Mint>,
+    pub token_mint_b: Box<InterfaceAccount<'info, Mint>>,
 
     #[account(
       mut,
@@ -217,7 +212,7 @@ pub struct DepositTokenB<'info> {
       seeds = [Market::SEED_PREFIX.as_bytes()],
       bump = market.bump
     )]
-    pub market: Account<'info, Market>,
+    pub market: Box<Account<'info, Market>>,
 
     #[account(
       init,
@@ -226,13 +221,13 @@ pub struct DepositTokenB<'info> {
       space = ANCHOR_DISCRIMINATOR + PositionB::INIT_SPACE,
       bump
     )]
-    pub position_b: Account<'info, PositionB>,
+    pub position_b: Box<Account<'info, PositionB>>,
 
     #[account(
       mut,
       seeds = [TREASURY_B_SEED.as_bytes(), market.key().as_ref()], bump
     )]
-    pub treasury_b: InterfaceAccount<'info, TokenAccount>,
+    pub treasury_b: Box<InterfaceAccount<'info, TokenAccount>>,
 
     #[account(
       mut,
@@ -295,11 +290,6 @@ impl<'info> DepositTokenB<'info> {
     }
 
     pub fn transfer_tokens_to_treasury(&self, amount: u64) -> Result<()> {
-        msg!(
-            "Transferring {} tokens of mint {} to treasury",
-            amount / u64::pow(10, self.token_mint_b.decimals as u32),
-            &self.token_mint_b.key()
-        );
         transfer_tokens(
             &self.depositor_token_account,
             &self.treasury_b,
