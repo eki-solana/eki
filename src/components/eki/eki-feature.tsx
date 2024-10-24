@@ -1,19 +1,18 @@
 "use client";
 
 import { useWallet } from "@solana/wallet-adapter-react";
-import { ExplorerLink } from "../cluster/cluster-ui";
 import { WalletButton } from "../solana/solana-provider";
-import { AppHero, ellipsify } from "../ui/ui-layout";
-import { useEkiProgram } from "./basic-data-access";
-import { BasicCreate, BasicProgram } from "./basic-ui";
 
-export default function BasicFeature() {
+import { MarketChart } from "./chart-ui";
+import { useEkiProgram } from "./eki-data-access";
+
+export default function EkiFeature() {
   const { publicKey } = useWallet();
-  const { programId } = useEkiProgram();
+  const { getPositionA, getPositionB } = useEkiProgram();
 
   return publicKey ? (
-    <div>
-      <AppHero
+    <div className="py-24">
+      {/* <AppHero
         title="Basic"
         subtitle={'Run the program by clicking the "Run program" button.'}
       >
@@ -23,9 +22,13 @@ export default function BasicFeature() {
             label={ellipsify(programId.toString())}
           />
         </p>
-        <BasicCreate />
-      </AppHero>
-      <BasicProgram />
+        <MarketData />
+      </AppHero> */}
+      <MarketChart />
+      <div>PositionA</div>
+      <div>{getPositionA.data?.amount.toNumber() / 1000000000}</div>
+      <div>PositionB</div>
+      <div>{getPositionB.data?.amount.toNumber() / 1000000}</div>
     </div>
   ) : (
     <div className="max-w-4xl mx-auto">

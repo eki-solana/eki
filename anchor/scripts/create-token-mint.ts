@@ -65,5 +65,5 @@ process.env.ANCHOR_WALLET = idWallet;
   console.log("SOL's mint address:", mintSOL.toBase58());
   console.log("USDC's mint address:", mintUSDC.toBase58());
 })()
-  .then(() => console.log("Market initialized!"))
+  .then(() => console.log("Token mints created!"))
   .catch((e) => console.log(e));

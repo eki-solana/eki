@@ -113,7 +113,7 @@ export function AccountTokens({ address }: { address: PublicKey }) {
   }, [query.data, showAll]);
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-2 min-w-[400px] max-w-[800px]">
       <div className="justify-between">
         <div className="flex justify-between">
           <h2 className="text-2xl font-bold">Token Accounts</h2>
@@ -217,7 +217,7 @@ export function AccountTransactions({ address }: { address: PublicKey }) {
   }, [query.data, showAll]);
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-2 min-w-[400px] max-w-[800px]">
       <div className="flex justify-between">
         <h2 className="text-2xl font-bold">Transaction History</h2>
         <div className="space-x-2">

@@ -25,8 +25,8 @@ const PRICES_ACCOUNT_SIZE = 10080008; // check account size in program
 // const USDC_MINT = new PublicKey("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v");
 
 // Need to first run create mint script and insert the mint addresses here
-const SOL_MINT = new PublicKey("AqmaM131N6Aa54pKLtbxHmx687zqjVx7jECo5EQyaxff");
-const USDC_MINT = new PublicKey("UzGwQdU8u9ogEeBYkTL8T3aypNeNm26NcqpKYcAbgZy");
+const SOL_MINT = new PublicKey("9TmSJeP1K89kGJJQf54D2P6kYeD5Uc7j2pzFWFre5Fms");
+const USDC_MINT = new PublicKey("95eBaAbEAZvxngRgNL4qmikTcYhzHNBwxKTuT2p7SGU");
 
 (async () => {
   const provider = anchor.AnchorProvider.env();
@@ -110,6 +110,9 @@ const USDC_MINT = new PublicKey("UzGwQdU8u9ogEeBYkTL8T3aypNeNm26NcqpKYcAbgZy");
     exits: exits.publicKey,
     prices: prices.publicKey,
   };
+
+  console.log("Exits PubKey", exits.publicKey);
+  console.log("Prices PubKey", prices.publicKey);
 
   let startSlot = (await provider.connection.getSlot()) + 60 * 60 * 2.5;
 

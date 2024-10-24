@@ -9,7 +9,7 @@ import { useCluster } from "../cluster/cluster-data-access";
 import { useAnchorProvider } from "../solana/solana-provider";
 import { useTransactionToast } from "../ui/ui-layout";
 
-export function useEkiProgram() {
+export function useBasicProgram() {
   const { connection } = useConnection();
   const { cluster } = useCluster();
   const transactionToast = useTransactionToast();
